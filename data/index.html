@@ -21,7 +21,7 @@
   <title id="pagetitle">Matrix Clock</title>
 </head>
 
-<body">
+<body>
 
   <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
     <a class="navbar-brand" href="./index.html">7 Segment Clock</a>
@@ -288,7 +288,7 @@
                 <option value="<-04>4">America/Porto Velho</option>
                 <option value="AST4">America/Puerto Rico</option>
                 <option value="<-03>3">America/Punta Arenas</option>
-                <option value="CST6CDT,M3.2.0,M11.1.0">America/Rainy River</option>
+                <option value="<-05>5">America/Rainy River</option>
                 <option value="CST6CDT,M3.2.0,M11.1.0">America/Rankin Inlet</option>
                 <option value="<-03>3">America/Recife</option>
                 <option value="CST6">America/Regina</option>
@@ -315,7 +315,7 @@
                 <option value="AST4">America/Tortola</option>
                 <option value="PST8PDT,M3.2.0,M11.1.0">America/Vancouver</option>
                 <option value="MST7">America/Whitehorse</option>
-                <option value="CST6CDT,M3.2.0,M11.1.0">America/Winnipeg</option>
+                <option value="<-05>5">America/Winnipeg</option>
                 <option value="AKST9AKDT,M3.2.0,M11.1.0">America/Yakutat</option>
                 <option value="MST7MDT,M3.2.0,M11.1.0">America/Yellowknife</option>
                 <option value="<+08>-8">Antarctica/Casey</option>
@@ -577,7 +577,7 @@
                 <option value="UTC0">Etc/UTC</option>
                 <option value="GMT0">Etc/Greenwich</option>
                 <option value="UTC0">Etc/Universal</option>
-                <option value="UTC0">Etc/Zul</option>
+                <option value="UTC0">Etc/Zulu</option>
               </select>
             </div>
             <button type="button" class="btn btn-primary" onclick="updateTzOffset()">Update Timezone Offset</button>
@@ -591,9 +591,9 @@
             <label>Temperature</label>
             <br />
             <label for="hassBaseUrl">HA base URL</label>
-            <input type="text" id="hassBaseUrl" class="form-control" value="http://sandhass.sand.lan:8123">
+            <input type="text" id="hassBaseUrl" class="form-control" value="" placeholder="http://homeassistant.local:8123">
             <label for="hassEntityId">HA entity Id</label>
-            <input type="text" id="hassEntityId" class="form-control" value="sensor.deck_temp">
+            <input type="text" id="hassEntityId" class="form-control" value="" placeholder="sensor.living_room_temp">
             <label for="hassAT">HA access token</label>
             <input type="text" id="hassAT" class="form-control" value="">
           </div>

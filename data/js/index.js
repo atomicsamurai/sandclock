@@ -50,18 +50,19 @@ function getServerValues() {
   });
 }
 
-function setWifiConfig() {
-  const wifi_ssid = $('#wifi_ssid').val();
-  const wifi_password = $('#wifi_password').val();
-
-  $.post("/config/wifiConfig", {
-    wifi_ssid: wifi_ssid,
-    wifi_password: wifi_password
-  });
+// POST with console feedback: the config endpoints return 400 on invalid
+// values, and without this a rejected setting fails silently.
+function postSettings(url, data) {
+  $.post(url, data)
+    .done(resp => console.log(`${url}: ok`, resp))
+    .fail((xhr) => console.warn(`${url}: rejected`, xhr.status, xhr.responseText));
 }
 
-function reboot() {
-  $.get("/reboot");
+function setWifiConfig() {
+  postSettings("/config/wifiConfig", {
+    wifi_ssid: $('#wifi_ssid').val(),
+    wifi_password: $('#wifi_password').val()
+  });
 }
 
 function beep1() {
@@ -79,20 +80,16 @@ function beep2() {
 }
 
 function forceTemp() {
-  const ft = $('#forceTemp').val();
-  console.log(ft);
-  $.post("/forcetemp", {
-    forceTemp: ft
+  postSettings("/forcetemp", {
+    forceTemp: $('#forceTemp').val()
   });
 }
 
 function forceTime() {
-  const ft = $('#forceTime').val();
-  const t = new Date(`01 Jan 2023 ${ft}`).getTime();
-  console.log(t);
-  $.post("/forcetime",  {
-    forceTime: t
-  });
+  // today's date + the entered time, so forcing time keeps the date correct
+  const d = new Date();
+  const t = new Date(`${d.toDateString()} ${$('#forceTime').val()}`).getTime();
+  postSettings("/forcetime", { forceTime: t });
 }
 
 function syncTime() {
@@ -100,102 +97,63 @@ function syncTime() {
 }
 
 function setClockColor() {
-  const color = $('#clock_color').minicolors('rgbObject');
-  console.log(color);
-  $.post("/config/clockcolor", color);
+  postSettings("/config/clockcolor", $('#clock_color').minicolors('rgbObject'));
 }
 
 function setTempColor() {
-  const color = $('#temp_color').minicolors('rgbObject');
-  console.log(color);
-  $.post("/config/tempcolor", color);
+  postSettings("/config/tempcolor", $('#temp_color').minicolors('rgbObject'));
 }
 
 function setOtherColor() {
-  const color = $('#other_color').minicolors('rgbObject');
-  console.log(color);
-  $.post("/config/othercolor", color);
+  postSettings("/config/othercolor", $('#other_color').minicolors('rgbObject'));
 }
 
 function toggleAutoBrightness() {
   let abcb = document.querySelector('#autoBrightness');
   if (abcb.checked) {
     $('#rangeBrightness').prop("disabled", true);
-    $.post("/config/autobrightness", {
-      autoBrightness: true
-    });
+    postSettings("/config/autobrightness", { autoBrightness: true });
     setTimeout(function () {
       getServerValues();
     }, 1000)
   } else {
     $('#rangeBrightness').prop("disabled", false);
-    $.post("/config/autobrightness", {
-      autoBrightness: false
-    });
+    postSettings("/config/autobrightness", { autoBrightness: false });
   }
 }
 
 function setBrightness() {
-  const brightness = $('#rangeBrightness').val();
-  console.log(brightness);
-  $.post("/config/brightness", {
-    brightness: brightness
+  postSettings("/config/brightness", {
+    brightness: $('#rangeBrightness').val()
   });
 }
 
-function setDateTime() {
-  const d = moment().format('MMMM DD YYYY');
-  const t = moment().format('HH:mm:ss');
-  const datetime = {
-    date: d,
-    time: t
-  };
-  console.log(datetime);
-  $.post("/setdate", datetime);
-}
-
-function showClock() {
-  $.post("/clock");
-}
-
 function updateHourFormat() {
-  const hourFormat = $('#hourFormat').val();
-  $.post("/config/hourformat", {
-    hourFormat: hourFormat
+  postSettings("/config/hourformat", {
+    hourFormat: $('#hourFormat').val()
   });
 }
 
 function updateTzOffset() {
-  const tzValue = $('#timezones').val();
-  const tzName = $('#timezones option:selected').text();
-  $.post("/config/timezones", {
-    tzValue: tzValue,
-    tzName: tzName
+  postSettings("/config/timezones", {
+    tzValue: $('#timezones').val(),
+    tzName: $('#timezones option:selected').text()
   });
 }
 
 function sethassConfig() {
-  const hassBaseUrl = $('#hassBaseUrl').val();
-  const hassEntityId = $('#hassEntityId').val();
-  const hassAT = $('#hassAT').val();
-
-  $.post("/config/hassConfig", {
-    hassBaseUrl: hassBaseUrl,
-    hassEntityId: hassEntityId,
-    hassAT: hassAT
+  postSettings("/config/hassConfig", {
+    hassBaseUrl: $('#hassBaseUrl').val(),
+    hassEntityId: $('#hassEntityId').val(),
+    hassAT: $('#hassAT').val()
   });
 }
 
 function showMessage() {
-  const messageText = $('#messageText').val();
-  const scrollDelay = $('#scrollDelay').val();
-  const repeatCount = $('#repeatCount').val();
-  console.log(`showmessage: ${messageText}:${scrollDelay}:${repeatCount}`);
-
-  $.post("/showmessage", {
-    messageText: messageText,
-    scrollDelay: scrollDelay,
-    repeatCount: repeatCount
+  postSettings("/showmessage", {
+    messageText: $('#messageText').val(),
+    scrollDelay: $('#scrollDelay').val(),
+    repeatCount: $('#repeatCount').val()
   });
 }
 
