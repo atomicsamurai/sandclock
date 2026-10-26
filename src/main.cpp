@@ -132,9 +132,19 @@ void loop() {
       if (currentMillis - prevTime >= 1000) { // every sec
           prevTime = currentMillis;
           checkChime();
+          if (!showingTemp && currentMillis - screenStartMs >= TIME_SCREEN_MS) {
+            showingTemp = 1;
+            screenStartMs = currentMillis;
+          } else if (showingTemp && currentMillis - screenStartMs >= TEMP_SCREEN_MS) {
+            showingTemp = 0;
+            screenStartMs = currentMillis;
+          }
           clearDisplay();
-          showTime();
-          showTemperature();
+          if (showingTemp) {
+            showTemperature();
+          } else {
+            showTime();
+          }
       }
       // if (currentMillis - prevTimeNtpSync >= 3600000) { // every hour
       //   prevTimeNtpSync = currentMillis;

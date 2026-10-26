@@ -53,6 +53,11 @@ bool dotsOn = true;
 long currentTemp = -1000;
 int tempFetchCounter = 100;
 
+// Alt-screen cycle: 5s time, 2s temperature
+const unsigned long TIME_SCREEN_MS = 5000;
+const unsigned long TEMP_SCREEN_MS = 2000;
+unsigned long screenStartMs = 0;
+
 RgbColor color_black = RgbColor(0, 0, 0);
 
 WiFiUDP ntpUDP;

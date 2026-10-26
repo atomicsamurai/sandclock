@@ -3,20 +3,6 @@
 #include "digits.h"
 #include "sounds.h"
 
-// void warningBlinkInfinite() {
-//   byte count = 0;
-//   while (true) {
-//     if (count >= 60) {
-//       count = 0;
-//     }
-//     delay(100);
-    
-//     LEDs[count] = CRGB::Red;
-//     FastLED.show();
-//     count++;
-//   }
-// }
-
 void clearDisplay() {
   for (int i = 0; i != PanelWidth; ++i) {
     for (int j = 0; j != PanelHeight; ++j) {
@@ -26,27 +12,29 @@ void clearDisplay() {
   }
 }
 
-void print(int &x, int &y, int digit, const Font &font, RgbColor color) {
+// Draw one glyph with its left edge at x. hscale repeats each glyph column
+// so a glyph can be widened without new font data (temp screen uses hscale 2).
+void printAt(int x, int y, int digit, const Font &font, RgbColor color, int hscale = 1) {
   const auto &glyph = font.glyphs[digit];
   for (int i = 0; i < glyph.width; ++i) {
     for (int j = 0; j < font.height; ++j) {
-      auto ix = x + i;
-      auto iy = y + j;
-      if (ix >= 0 && ix < PanelWidth && iy >= 0 && iy < PanelHeight) {
-        if (glyph.data[j] & (1 << ((glyph.width - 1) - i))) {
-          auto addsat = [] (int a, int b) { return a + b > 255 ? 255 : a + b; };
-          auto pixel = topo.Map (ix, iy);
-          strip.SetPixelColor(pixel, color);
+      if (glyph.data[j] & (1 << ((glyph.width - 1) - i))) {
+        for (int s = 0; s < hscale; ++s) {
+          int px = x + i * hscale + s;
+          int py = y + j;
+          if (px >= 0 && px < PanelWidth && py >= 0 && py < PanelHeight) {
+            auto pixel = topo.Map (px, py);
+            strip.SetPixelColor(pixel, color);
+          }
         }
-      } 
+      }
     }
   }
-  x += glyph.width + 1;
 }
 
 // Chime on the hour (double) and half hour (single). Called every second from
-// loop(), independent of what is on screen, so a scroll covering the top of
-// the minute no longer swallows the chime.
+// loop(), independent of which screen is showing, so the chime still fires
+// when the temperature screen covers the top of the minute.
 void checkChime() {
   auto now = ::time (nullptr);
   auto tm = ::localtime (&now);
@@ -67,9 +55,6 @@ void showTime() {
   auto tm = ::localtime (&now);
   int thishour = tm->tm_hour;
   int thismins = tm->tm_min;
-
-  int x_start = 0;
-  int y_start = 1;
   Log.verboseln("time: %d:%d:%d", thishour, thismins, tm->tm_sec);
 
   if (config.hourFormat == 12) {
@@ -83,78 +68,79 @@ void showTime() {
   byte h2 = thishour % 10;
   byte m1 = thismins / 10;
   byte m2 = thismins % 10;
-  const auto &font = clock_font ("Time");
+
+  // Classic 5x7 font, edge-to-edge: slots H1@0-4, H2@7-11, colon@15,
+  // M1@19-23, M2@27-31.
+  const auto &font = clock_font ("Classic");
+  int y_start = 0;
 
   if (h1 > 0) {
-    print (x_start, y_start, h1, font, config.clock_color);
+    // H1@0-4, H2@7-11, colon@15, M1@19-23, M2@27-31
+    printAt (0, y_start, h1, font, config.clock_color);
+    printAt (7, y_start, h2, font, config.clock_color);
+    printAt (15, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
+    printAt (19, y_start, m1, font, config.clock_color);
+    printAt (27, y_start, m2, font, config.clock_color);
   } else {
-    print (x_start, y_start, BLANK, font, config.clock_color);
-  }
-  print (x_start, y_start, h2, font, config.clock_color);
-
-  if (dotsOn) {
-    print (x_start, y_start, COLON, font, config.clock_color);
-  } else {
-    print (x_start, y_start, COLON, font, color_black);
+    // single-digit hour: center the four remaining glyphs
+    printAt (3, y_start, h2, font, config.clock_color);
+    printAt (12, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
+    printAt (17, y_start, m1, font, config.clock_color);
+    printAt (25, y_start, m2, font, config.clock_color);
   }
   dotsOn = !dotsOn;
-  
-  print (x_start, y_start, m1, font, config.clock_color);
-  print (x_start, y_start, m2, font, config.clock_color);
-
 }
 
 void showTemperature() {
-  tempFetchCounter++;
-  if (tempFetchCounter > 100) {
+  if (millis() - prevTimeTemperature >= 60000) { // refresh from HA every minute
+    prevTimeTemperature = millis();
     currentTemp = getTemperatureFromHA();
-    tempFetchCounter = 0;
   }
- 
-  const auto &font = clock_font ("Temp");
-  int x_start = 22;
-  int y_start = 1;
 
-  // long temp = getTemperatureFromHA();
-  Log.traceln("temp: %d", currentTemp);
-  if (currentTemp != -1000) {
-    // temp fetched successfully
-    int positiveTemp = currentTemp;
-    if (currentTemp < 0)
-      positiveTemp = -currentTemp;
-    byte t1 = int(positiveTemp) / 10;
-    byte t2 = int(positiveTemp) % 10;
-    Log.traceln("first digit: %d", t2);
-    
-    Log.traceln("second digit: %d", t1);
-    if (t1 == 0) {
-      if (currentTemp < 0) {
-        Log.traceln("third digit: -");
-        // displayNumber(negativeSymbol, 1, color);
-        print (x_start, y_start, MINUS, font, config.temp_color);
-      } else {
-        Log.traceln("third digit: ");
-        // displayNumber(offDigit, 1, color);
-        print (x_start, y_start, MINUS, font, color_black);
-      }
-      // displayNumber(t2, 0, color);
-      print (x_start, y_start, t2, font, config.temp_color);
-      print (x_start, y_start, t2, font, color_black);
-    } else {
-      if (currentTemp < 0) {
-        Log.traceln("third digit: -");
-        // displayNumber(negativeSymbol, 2, color);
-        print (x_start, y_start, MINUS, font, config.temp_color);
-      } else {
-        print (x_start, y_start, MINUS, font, color_black);
-      }
-      print (x_start, y_start, t1, font, config.temp_color);
-      print (x_start, y_start, t2, font, config.temp_color);
+  // Classic font digits are 5 wide; at hscale 2 that is 10 per digit.
+  // The sign renders unscaled (5-col dash) so "-15" fits: 5+10+10+2+2 = 29
+  // of 32 columns. Scaled, it would need 34 and clip the last digit.
+  const auto &font = clock_font ("Classic");
+  const int d14 = 11; // MINUS glyph index in the Classic font
+  int y_start = 0;
+  const int gap = 2;
+
+  byte glyphs[4];
+  int scale[4];
+  int n = 0;
+  if (currentTemp == -1000) { // no reading from HA
+    for (int i = 0; i < 3; ++i) {
+      glyphs[n] = d14;
+      scale[n++] = 2;
     }
   } else {
-    print (x_start, y_start, MINUS, font, config.temp_color);
-    print (x_start, y_start, MINUS, font, config.temp_color);
-    print (x_start, y_start, MINUS, font, config.temp_color);
+    int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
+    if (positiveTemp > 99)
+      positiveTemp = 99;
+    byte t1 = positiveTemp / 10;
+    byte t2 = positiveTemp % 10;
+    if (currentTemp < 0) {
+      glyphs[n] = d14;
+      scale[n++] = 1; // unscaled dash leaves room for two scaled digits
+    }
+    if (t1 > 0) {
+      glyphs[n] = t1;
+      scale[n++] = 2;
+    }
+    glyphs[n] = t2;
+    scale[n++] = 2;
+  }
+
+  int total = 0;
+  for (int i = 0; i < n; ++i) {
+    total += font.glyphs[glyphs[i]].width * scale[i];
+  }
+  total += (n - 1) * gap;
+
+  int x = (PanelWidth - total) / 2;
+  for (int i = 0; i < n; ++i) {
+    printAt (x, y_start, glyphs[i], font, config.temp_color, scale[i]);
+    x += font.glyphs[glyphs[i]].width * scale[i] + gap;
   }
 }
 
