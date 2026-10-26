@@ -28,6 +28,7 @@ function getServerValues() {
   $.get("/config", data => {
     console.log("config: ", data);
     $(document).attr("title", `Matrix Clock [${data.wifiMacString.toLowerCase().replaceAll(":", "")}]`);
+    $('#fwVersion').text(data.fwVersion ? `Firmware version: ${data.fwVersion}` : "Firmware version: unknown (pre-2.1.0)");
     $('#wifi_ssid').val(data.wifi_ssid);
     $('#wifi_password').val(data.wifi_password);
     $('#clock_color').minicolors('value', data.clock_color);

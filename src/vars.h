@@ -6,6 +6,13 @@
 #include <NeoPixelBrightnessBus.h>
 
 /*
+ * Firmware version. Bump on every behavior-changing release; the UI shows it
+ * (footer + OTA page) and /config reports it, so a flash can be verified
+ * from the browser or with `curl http://sandclock.local/config`.
+ */
+#define FW_VERSION "2.1.0"
+
+/*
  * Shared globals, grouped by concern. Everything here is defined once and
  * read across headers (single translation unit build: main.cpp includes
  * vars.h first, then every other header in dependency order).

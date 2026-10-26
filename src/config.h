@@ -88,6 +88,7 @@ DynamicJsonDocument getConfigDoc() {
 
   doc["hourFormat"] = config.hourFormat;
   doc["displayStyle"] = config.displayStyle;
+  doc["fwVersion"] = FW_VERSION;
   doc["hassConfig"]["hassBaseUrl"] = config.hassBaseUrl;
   doc["hassConfig"]["hassEntityId"] = config.hassEntityId;
   doc["hassConfig"]["hassAT"] = config.hassAT;
