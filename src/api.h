@@ -133,6 +133,22 @@ void setHourFormat() {
   getConfig();
 }
 
+void setDisplayStyle() {
+  if(!server.hasArg("displayStyle")) {
+    server.send(400, "text/plain", "400: Invalid Request");
+    return;
+  }
+  long s = server.arg("displayStyle").toInt();
+  if (s != 1 && s != 2) {
+    server.send(400, "text/plain", "400: displayStyle must be 1 (cycle) or 2 (combined)");
+    return;
+  }
+  config.displayStyle = s;
+  Log.traceln("set display style: %d", s);
+  saveConfig();
+  getConfig();
+}
+
 void reboot() {
   server.send(200, F("text/html"), R""(
 <!DOCTYPE html>
@@ -220,6 +236,7 @@ void setupHandlers() {
   server.on("/config/brightness", HTTP_POST, setBrightness);
   server.on("/config/autobrightness", HTTP_POST, toggleAutoBrightness);
   server.on("/config/hourformat", HTTP_POST, setHourFormat);
+  server.on("/config/displaystyle", HTTP_POST, setDisplayStyle);
   server.on("/config/wifiConfig", HTTP_POST, updateWifiConfig);
   server.on("/config/timezones", HTTP_POST, setTimezone);
   server.on("/forcetemp", HTTP_POST, forceTemp);

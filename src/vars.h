@@ -20,6 +20,7 @@ struct ConfigObject {
   bool autoBrightness;
   byte brightness;
   byte hourFormat;
+  byte displayStyle;  // 1 = cycle time/temp (5s/2s), 2 = combined on one screen
   char hassBaseUrl[100];
   char hassEntityId[128];
   char hassAT[512];

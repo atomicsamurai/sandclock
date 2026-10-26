@@ -133,18 +133,24 @@ void loop() {
       if (currentMillis - prevTime >= 1000) { // every sec
           prevTime = currentMillis;
           checkChime();
-          if (!showingTemp && currentMillis - screenStartMs >= TIME_SCREEN_MS) {
-            showingTemp = 1;
-            screenStartMs = currentMillis;
-          } else if (showingTemp && currentMillis - screenStartMs >= TEMP_SCREEN_MS) {
-            showingTemp = 0;
-            screenStartMs = currentMillis;
-          }
           clearDisplay();
-          if (showingTemp) {
-            showTemperature();
+          if (config.displayStyle == 2) {
+            // combined: time and temperature on one screen, no cycling
+            showCombined();
           } else {
-            showTime();
+            // cycle: 5s time, 2s temperature
+            if (!showingTemp && currentMillis - screenStartMs >= TIME_SCREEN_MS) {
+              showingTemp = 1;
+              screenStartMs = currentMillis;
+            } else if (showingTemp && currentMillis - screenStartMs >= TEMP_SCREEN_MS) {
+              showingTemp = 0;
+              screenStartMs = currentMillis;
+            }
+            if (showingTemp) {
+              showTemperature();
+            } else {
+              showTime();
+            }
           }
       }
       // if (currentMillis - prevTimeNtpSync >= 3600000) { // every hour

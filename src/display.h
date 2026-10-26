@@ -125,3 +125,42 @@ void showTemperature() {
     x += font.glyphs[glyphs[i]].width * scale[i] + gap;
   }
 }
+
+// The original small right-corner temperature (Temp font, 3x5 digits).
+void showTemperatureSmall() {
+  // keep the HA fetch cadence when the small style is the only renderer
+  if (millis() - prevTimeTemperature >= 60000) {
+    prevTimeTemperature = millis();
+    currentTemp = getTemperatureFromHA();
+  }
+
+  const auto &font = clock_font ("Temp");
+  int x_start = 22;
+  int y_start = 1;
+
+  if (currentTemp != -1000) {
+    int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
+    byte t1 = positiveTemp / 10;
+    byte t2 = positiveTemp % 10;
+    if (t1 == 0) {
+      printAt (x_start, y_start, MINUS, font, currentTemp < 0 ? config.temp_color : color_black);
+      printAt (x_start + 3, y_start, t2, font, config.temp_color);
+    } else {
+      printAt (x_start, y_start, MINUS, font, currentTemp < 0 ? config.temp_color : color_black);
+      printAt (x_start + 3, y_start, t1, font, config.temp_color);
+      printAt (x_start + 7, y_start, t2, font, config.temp_color);
+    }
+  } else {
+    printAt (x_start, y_start, MINUS, font, config.temp_color);
+    printAt (x_start + 3, y_start, MINUS, font, config.temp_color);
+    printAt (x_start + 7, y_start, MINUS, font, config.temp_color);
+  }
+}
+
+// Combined style (displayStyle 2): the original layout, time and temperature
+// side by side every second. Time uses the Classic font at x=0..21, temp uses
+// the small Temp font at x=22..31.
+void showCombined() {
+  showTime();
+  showTemperatureSmall();
+}

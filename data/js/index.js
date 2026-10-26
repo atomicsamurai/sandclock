@@ -36,6 +36,7 @@ function getServerValues() {
     let rangeB = document.getElementById("rangeBrightness");
     rangeB.value = data.brightness;
     $('#hourFormat').val("" + data.hourFormat);
+    $('#displayStyle').val("" + data.displayStyle);
     $('#autoBrightness').prop("checked", data.autoBrightness);
     if (data.autoBrightness) {
       $('#rangeBrightness').prop("disabled", true);
@@ -131,6 +132,12 @@ function setBrightness() {
 function updateHourFormat() {
   postSettings("/config/hourformat", {
     hourFormat: $('#hourFormat').val()
+  });
+}
+
+function updateDisplayStyle() {
+  postSettings("/config/displaystyle", {
+    displayStyle: $('#displayStyle').val()
   });
 }
 

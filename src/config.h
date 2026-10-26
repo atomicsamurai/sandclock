@@ -9,6 +9,7 @@ void initDefaultConfig() {
   config.temp_color = RgbColor(255, 0, 0);
   config.other_color = RgbColor(255, 0, 0);
   config.hourFormat = 12;
+  config.displayStyle = 1;  // default: 5s/2s cycle
   config.wifiMacString = WiFi.macAddress();
   strcpy(config.tzName, "Etc/UTC");
   strcpy(config.tzValue, "UTC0");
@@ -49,6 +50,8 @@ bool loadConfig() {
     config.other_color = RgbColor(doc["other_color"]["r"], doc["other_color"]["g"], doc["other_color"]["b"]);
 
     config.hourFormat = doc["hourFormat"];
+    // default for configs saved before displayStyle existed
+    config.displayStyle = doc["displayStyle"] | 1;
     strlcpy(config.hassBaseUrl, doc["hassConfig"]["hassBaseUrl"], sizeof(config.hassBaseUrl));
     strlcpy(config.hassEntityId, doc["hassConfig"]["hassEntityId"], sizeof(config.hassEntityId));
     strlcpy(config.hassAT, doc["hassConfig"]["hassAT"], sizeof(config.hassAT));
@@ -84,6 +87,7 @@ DynamicJsonDocument getConfigDoc() {
   doc["other_color"]["b"] = config.other_color.B;
 
   doc["hourFormat"] = config.hourFormat;
+  doc["displayStyle"] = config.displayStyle;
   doc["hassConfig"]["hassBaseUrl"] = config.hassBaseUrl;
   doc["hassConfig"]["hassEntityId"] = config.hassEntityId;
   doc["hassConfig"]["hassAT"] = config.hassAT;
