@@ -2,10 +2,10 @@
 
 #include "config.h"
 #include "hass.h"
-#include "time_ops.h"
-#include "timezones.h"
-#include "vars.h"
+#include "scroll.h"
 #include "sounds.h"
+#include "time_ops.h"
+#include "vars.h"
 
 void getConfig() {
   char buffer[1024];

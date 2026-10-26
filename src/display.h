@@ -1,7 +1,7 @@
 #pragma once
 
 #include "digits.h"
-#include "sounds.h"
+#include "hass.h"  // getTemperatureFromHA, used by showTemperature()
 
 void clearDisplay() {
   for (int i = 0; i != PanelWidth; ++i) {
@@ -29,24 +29,6 @@ void printAt(int x, int y, int digit, const Font &font, RgbColor color, int hsca
         }
       }
     }
-  }
-}
-
-// Chime on the hour (double) and half hour (single). Called every second from
-// loop(), independent of which screen is showing, so the chime still fires
-// when the temperature screen covers the top of the minute.
-void checkChime() {
-  auto now = ::time (nullptr);
-  auto tm = ::localtime (&now);
-  if (tm->tm_sec == 0 && beepDone == 0 && (tm->tm_min == 0 || tm->tm_min == 30)) {
-    if (tm->tm_min == 30) {
-      singleBeep();
-    } else {
-      doubleBeep();
-    }
-    beepDone = 1;
-  } else {
-    beepDone = 0;
   }
 }
 
@@ -142,16 +124,4 @@ void showTemperature() {
     printAt (x, y_start, glyphs[i], font, config.temp_color, scale[i]);
     x += font.glyphs[glyphs[i]].width * scale[i] + gap;
   }
-}
-
-void handleBrightness() {
-  if (config.autoBrightness) {
-    sensorValue = analogRead(sensorPin);
-    // sensorValue varies from 0 to 1023
-    // brightness should be from 15 (min) to 255
-    config.brightness = (sensorValue * 215 / 1023) + 15;
-    Log.traceln("HB - sensor val: %d, voltage: %F, brightness calculated: %d", sensorValue, voltage, config.brightness);
-  }
-  // Log.traceln("setting brightness: %d", brightness);
-  strip.SetBrightness(config.brightness);
 }

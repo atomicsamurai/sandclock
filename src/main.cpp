@@ -24,16 +24,17 @@ NeoPixelBrightnessBus<NeoGrbFeature, Neo800KbpsMethod> strip (PixelCount);
 
 /**************************************************************************/
 
+// Dependency order: vars.h defines the shared globals every other header
+// reads; each header below declares what it needs so none of them depends
+// on include order in this file (except vars.h coming first).
 #include "vars.h"
 #include "wifi_logo.h"
-#include "api.h"
-// #include "config.h"
-#include "display.h"
 #include "sounds.h"
-#include "time_ops.h"
+#include "display.h"
+#include "sensor.h"
 #include "scroll.h"
-
-#define countof(a) (sizeof(a) / sizeof(a[0]))
+#include "time_ops.h"
+#include "api.h"
 
 DNSServer dnsServer;
 IPAddress APIP (192, 168, 4, 1);
