@@ -51,24 +51,24 @@ void showTime() {
   byte m1 = thismins / 10;
   byte m2 = thismins % 10;
 
-  // Classic 5x7 font, edge-to-edge: slots H1@0-4, H2@7-11, colon@15,
-  // M1@19-23, M2@27-31.
-  const auto &font = clock_font ("Classic");
+  // SevenSeg bold font: 2px strokes, all 8 rows. Slots H1@1-6, H2@8-13,
+  // colon@15-16, M1@18-23, M2@25-30; 1-col gaps, 1-col margins.
+  const auto &font = clock_font ("SevenSeg");
   int y_start = 0;
 
   if (h1 > 0) {
-    // H1@0-4, H2@7-11, colon@15, M1@19-23, M2@27-31
-    printAt (0, y_start, h1, font, config.clock_color);
-    printAt (7, y_start, h2, font, config.clock_color);
+    // H1@1-6, H2@8-13, colon@15-16, M1@18-23, M2@25-30
+    printAt (1, y_start, h1, font, config.clock_color);
+    printAt (8, y_start, h2, font, config.clock_color);
     printAt (15, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
-    printAt (19, y_start, m1, font, config.clock_color);
-    printAt (27, y_start, m2, font, config.clock_color);
-  } else {
-    // single-digit hour: center the four remaining glyphs
-    printAt (3, y_start, h2, font, config.clock_color);
-    printAt (12, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
-    printAt (17, y_start, m1, font, config.clock_color);
+    printAt (18, y_start, m1, font, config.clock_color);
     printAt (25, y_start, m2, font, config.clock_color);
+  } else {
+    // single-digit hour: center the four glyphs (4*6+3*1 = 27, margins 2/3)
+    printAt (2, y_start, h2, font, config.clock_color);
+    printAt (10, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
+    printAt (14, y_start, m1, font, config.clock_color);
+    printAt (21, y_start, m2, font, config.clock_color);
   }
   dotsOn = !dotsOn;
 }
