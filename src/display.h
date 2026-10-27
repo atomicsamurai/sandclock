@@ -80,22 +80,24 @@ void showTemperature() {
     currentTemp = getTemperatureFromHA();
   }
 
-  // Classic font digits are 5 wide; at hscale 2 that is 10 per digit.
-  // The sign renders unscaled (5-col dash) so "-15" fits: 5+10+10+2+2 = 29
-  // of 32 columns. Scaled, it would need 34 and clip the last digit.
-  const auto &font = clock_font ("Classic");
-  const int d14 = 11; // MINUS glyph index in the Classic font
+  // Same UserBold font as the clock, digits at hscale 2 (12 wide, full 8
+  // rows). The sign renders unscaled (6-col dash): "-15" then spans
+  // 6+12+12+2 = 32 exactly. A scaled dash would need 40. No-HA renders
+  // three unscaled dashes.
+  const auto &font = clock_font ("UserBold");
+  const int dMinus = 11; // MINUS glyph index in the UserBold font
   int y_start = 0;
-  const int gap = 2;
 
-  byte glyphs[4];
-  int scale[4];
+  byte glyphs[3];
+  int scale[3];
   int n = 0;
+  int gap;
   if (currentTemp == -1000) { // no reading from HA
     for (int i = 0; i < 3; ++i) {
-      glyphs[n] = d14;
-      scale[n++] = 2;
+      glyphs[n] = dMinus;
+      scale[n++] = 1;
     }
+    gap = 2;
   } else {
     int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
     if (positiveTemp > 99)
@@ -103,8 +105,11 @@ void showTemperature() {
     byte t1 = positiveTemp / 10;
     byte t2 = positiveTemp % 10;
     if (currentTemp < 0) {
-      glyphs[n] = d14;
-      scale[n++] = 1; // unscaled dash leaves room for two scaled digits
+      glyphs[n] = dMinus;
+      scale[n++] = 1;
+      gap = 1; // "-15" must land exactly on 32 columns
+    } else {
+      gap = 2;
     }
     if (t1 > 0) {
       glyphs[n] = t1;
