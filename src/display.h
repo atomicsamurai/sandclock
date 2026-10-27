@@ -88,9 +88,10 @@ void showTemperature() {
   const int dMinus = 11; // MINUS glyph index in the UserBold font
   int y_start = 0;
 
-  byte glyphs[3];  // up to 3 glyphs in slots 1, 2, 3 (slot 0 unused)
+  byte glyphs[4];  // up to 3 digits/sign + degree glyph
   int n = 0;
-  int slot[3];
+  int slot[4];
+  int degreeSlot = -1;
   if (currentTemp == -1000) { // no reading from HA: "---" in slots 1-3
     slot[0] = 1; slot[1] = 8; slot[2] = 18;
     for (int i = 0; i < 3; ++i) {
@@ -109,19 +110,25 @@ void showTemperature() {
         glyphs[n++] = t1;
       }
       glyphs[n++] = t2;
+      degreeSlot = slot[n-1] + 7;
     } else if (t1 > 0) {
       slot[0] = 1; slot[1] = 8; slot[2] = 15;
       glyphs[n++] = t1;
       glyphs[n++] = t2;
+      degreeSlot = 22;
     } else {
       slot[0] = 1; slot[1] = 8;
       glyphs[n++] = t1;
       glyphs[n++] = t2;
+      degreeSlot = 15;
     }
   }
 
   for (int i = 0; i < n; ++i) {
     printAt (slot[i], y_start, glyphs[i], font, config.temp_color);
+  }
+  if (degreeSlot >= 0) {
+    printAt (degreeSlot, y_start, DEGREES, font, config.temp_color);
   }
 }
 
