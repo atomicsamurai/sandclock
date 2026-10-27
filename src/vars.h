@@ -10,7 +10,7 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.2.0"
+#define FW_VERSION "2.2.1"
 
 /*
  * Shared globals, grouped by concern. Everything here is defined once and
