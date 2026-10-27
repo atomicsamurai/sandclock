@@ -134,6 +134,7 @@ void showTemperature() {
 
 
 // The original small right-corner temperature (Temp font, 3x5 digits).
+// In the combined view it owns the fixed region x=22..31.
 void showTemperatureSmall() {
   // keep the HA fetch cadence when the small style is the only renderer
   if (millis() - prevTimeTemperature >= 60000) {
@@ -142,32 +143,81 @@ void showTemperatureSmall() {
   }
 
   const auto &font = clock_font ("Temp");
-  int x_start = 22;
+  const int x_start = 22;
   int y_start = 1;
 
   if (currentTemp != -1000) {
     int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
+    if (positiveTemp > 99)
+      positiveTemp = 99;
     byte t1 = positiveTemp / 10;
     byte t2 = positiveTemp % 10;
-    if (t1 == 0) {
-      printAt (x_start, y_start, MINUS, font, currentTemp < 0 ? config.temp_color : color_black);
-      printAt (x_start + 3, y_start, t2, font, config.temp_color);
+    if (currentTemp < 0) {
+      // sign@22-23, then digits at 25 and 29: "-15" spans 22..31 exactly
+      printAt (x_start, y_start, MINUS, font, config.temp_color);
+      if (t1 > 0) {
+        printAt (x_start + 3, y_start, t1, font, config.temp_color);
+        printAt (x_start + 7, y_start, t2, font, config.temp_color);
+      } else {
+        printAt (x_start + 3, y_start, t2, font, config.temp_color);
+        printAt (x_start + 8, y_start, DEGREES, font, config.temp_color);
+      }
+    } else if (t1 > 0) {
+      // "21" at 22..28
+      printAt (x_start, y_start, t1, font, config.temp_color);
+      printAt (x_start + 4, y_start, t2, font, config.temp_color);
+      printAt (x_start + 8, y_start, DEGREES, font, config.temp_color);
     } else {
-      printAt (x_start, y_start, MINUS, font, currentTemp < 0 ? config.temp_color : color_black);
-      printAt (x_start + 3, y_start, t1, font, config.temp_color);
-      printAt (x_start + 7, y_start, t2, font, config.temp_color);
+      // "7" at 22..24
+      printAt (x_start, y_start, t2, font, config.temp_color);
+      printAt (x_start + 4, y_start, DEGREES, font, config.temp_color);
     }
   } else {
+    // "---" across the region
     printAt (x_start, y_start, MINUS, font, config.temp_color);
     printAt (x_start + 3, y_start, MINUS, font, config.temp_color);
     printAt (x_start + 7, y_start, MINUS, font, config.temp_color);
   }
 }
 
-// Combined style (displayStyle 2): the original layout, time and temperature
-// side by side every second. Time uses the Classic font at x=0..21, temp uses
-// the small Temp font at x=22..31.
+// Combined style (displayStyle 2): fixed split, time left, temp right.
+// Time: Compact font (4x8) in x=0..21, slots H1@0 H2@5 colon@10 M1@13 M2@18.
+// Temp: Temp font (3x5) in x=22..31, top-aligned at y=1.
 void showCombined() {
-  showTime();
+  auto now = ::time (nullptr);
+  auto tm = ::localtime (&now);
+  int thishour = tm->tm_hour;
+  int thismins = tm->tm_min;
+
+  if (config.hourFormat == 12) {
+    if (thishour == 0)
+      thishour = 12;
+    else if (thishour > 12)
+      thishour = thishour - 12;
+  }
+  byte h1 = thishour / 10;
+  byte h2 = thishour % 10;
+  byte m1 = thismins / 10;
+  byte m2 = thismins % 10;
+
+  const auto &font = clock_font ("Compact");
+  const int y_start = 0;
+
+  if (h1 > 0) {
+    // H1@0-3, H2@5-8, colon@10-11, M1@13-16, M2@18-21
+    printAt (0, y_start, h1, font, config.clock_color);
+    printAt (5, y_start, h2, font, config.clock_color);
+    printAt (10, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
+    printAt (13, y_start, m1, font, config.clock_color);
+    printAt (18, y_start, m2, font, config.clock_color);
+  } else {
+    // single-digit hour: same right-anchored slots, H at 5
+    printAt (5, y_start, h2, font, config.clock_color);
+    printAt (10, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
+    printAt (13, y_start, m1, font, config.clock_color);
+    printAt (18, y_start, m2, font, config.clock_color);
+  }
+  dotsOn = !dotsOn;
+
   showTemperatureSmall();
 }
