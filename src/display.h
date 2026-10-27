@@ -80,24 +80,22 @@ void showTemperature() {
     currentTemp = getTemperatureFromHA();
   }
 
-  // Same UserBold font as the clock, digits at hscale 2 (12 wide, full 8
-  // rows). The sign renders unscaled (6-col dash): "-15" then spans
-  // 6+12+12+2 = 32 exactly. A scaled dash would need 40. No-HA renders
-  // three unscaled dashes.
+  // Exact same UserBold glyphs at scale 1 as the clock, laid out like
+  // showTime(): 6-wide glyphs, 2-wide colon slots, 1-col gaps, 1-col
+  // margins (slots 1/8/15/18/25). "-15" renders as MINUS + "1" + "5" in
+  // the first three slots; unused trailing slots stay dark.
   const auto &font = clock_font ("UserBold");
   const int dMinus = 11; // MINUS glyph index in the UserBold font
   int y_start = 0;
 
-  byte glyphs[3];
-  int scale[3];
+  byte glyphs[3];  // up to 3 glyphs in slots 1, 2, 3 (slot 0 unused)
   int n = 0;
-  int gap;
-  if (currentTemp == -1000) { // no reading from HA
+  int slot[3];
+  if (currentTemp == -1000) { // no reading from HA: "---" in slots 1-3
+    slot[0] = 1; slot[1] = 8; slot[2] = 18;
     for (int i = 0; i < 3; ++i) {
-      glyphs[n] = dMinus;
-      scale[n++] = 1;
+      glyphs[n++] = dMinus;
     }
-    gap = 2;
   } else {
     int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
     if (positiveTemp > 99)
@@ -105,32 +103,28 @@ void showTemperature() {
     byte t1 = positiveTemp / 10;
     byte t2 = positiveTemp % 10;
     if (currentTemp < 0) {
-      glyphs[n] = dMinus;
-      scale[n++] = 1;
-      gap = 1; // "-15" must land exactly on 32 columns
+      slot[0] = 1; slot[1] = 8; slot[2] = 18;
+      glyphs[n++] = dMinus;
+      if (t1 > 0) {
+        glyphs[n++] = t1;
+      }
+      glyphs[n++] = t2;
+    } else if (t1 > 0) {
+      slot[0] = 1; slot[1] = 8; slot[2] = 15;
+      glyphs[n++] = t1;
+      glyphs[n++] = t2;
     } else {
-      gap = 2;
+      slot[0] = 1; slot[1] = 8;
+      glyphs[n++] = t1;
+      glyphs[n++] = t2;
     }
-    if (t1 > 0) {
-      glyphs[n] = t1;
-      scale[n++] = 2;
-    }
-    glyphs[n] = t2;
-    scale[n++] = 2;
   }
 
-  int total = 0;
   for (int i = 0; i < n; ++i) {
-    total += font.glyphs[glyphs[i]].width * scale[i];
-  }
-  total += (n - 1) * gap;
-
-  int x = (PanelWidth - total) / 2;
-  for (int i = 0; i < n; ++i) {
-    printAt (x, y_start, glyphs[i], font, config.temp_color, scale[i]);
-    x += font.glyphs[glyphs[i]].width * scale[i] + gap;
+    printAt (slot[i], y_start, glyphs[i], font, config.temp_color);
   }
 }
+
 
 // The original small right-corner temperature (Temp font, 3x5 digits).
 void showTemperatureSmall() {
