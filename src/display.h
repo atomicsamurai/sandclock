@@ -51,9 +51,10 @@ void showTime() {
   byte m1 = thismins / 10;
   byte m2 = thismins % 10;
 
-  // SevenSeg bold font: 2px strokes, all 8 rows. Slots H1@1-6, H2@8-13,
-  // colon@15-16, M1@18-23, M2@25-30; 1-col gaps, 1-col margins.
-  const auto &font = clock_font ("SevenSeg");
+  // UserBold font: the hand-drawn design emboldened to 2px strokes, all 8
+  // rows. Slots H1@1-6, H2@8-13, colon@15-16, M1@18-23, M2@25-30; 1-col
+  // gaps, 1-col margins.
+  const auto &font = clock_font ("UserBold");
   int y_start = 0;
 
   if (h1 > 0) {
