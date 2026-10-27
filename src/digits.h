@@ -924,12 +924,13 @@ const Font fonts[] =
           0b000000,
         }
       },
-      { // 13 = DEGREE: 3x3 ring, rows 0-2, right-aligned in the cell
+      { // 13 = DEGREE: 2x2 dot (same size as the colon dots), rows 0-1,
+        // right-aligned in the cell
         6,
         {
-          0b001110,
-          0b000101,
-          0b001110,
+          0b000110,
+          0b000110,
+          0b000000,
           0b000000,
           0b000000,
           0b000000,
