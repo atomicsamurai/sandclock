@@ -95,25 +95,17 @@ def show_temperature(c, fonts, t, color):
 
 def show_small(c, fonts, t, color):
     font = fonts["Temp"]
-    x0, y0 = 22, 1
     if t == -1000:
-        for dx in (0, 3, 7):
-            c.print_at(x0 + dx, y0, MINUS, font, color)
-        return
-    p = min(abs(t), 99)
-    t1, t2 = p // 10, p % 10
-    if t < 0:
-        c.print_at(x0, y0, MINUS, font, color)
-        if t1 > 0:
-            c.print_at(x0 + 3, y0, t1, font, color)
-            c.print_at(x0 + 7, y0, t2, font, color)
-        else:
-            c.print_at(x0 + 3, y0, t2, font, color)
-    elif t1 > 0:
-        c.print_at(x0, y0, t1, font, color)
-        c.print_at(x0 + 4, y0, t2, font, color)
+        glyphs = [MINUS] * 3
     else:
-        c.print_at(x0, y0, t2, font, color)
+        p = min(abs(t), 99)
+        t1, t2 = p // 10, p % 10
+        glyphs = ([MINUS] if t < 0 else []) + ([t1] if t1 > 0 else []) + [t2]
+    widths = [font["glyphs"][g]["width"] for g in glyphs]
+    x = W - (sum(widths) + len(glyphs) - 1)
+    for g, w in zip(glyphs, widths):
+        c.print_at(x, 1, g, font, color)
+        x += w + 1
 
 
 def show_combined(c, fonts, h, m, t, dots, clock, temp):

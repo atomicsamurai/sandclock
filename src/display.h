@@ -122,8 +122,9 @@ void showTemperature() {
 }
 
 
-// The original small right-corner temperature (Temp font, 3x5 digits).
-// In the combined view it owns the fixed region x=22..31.
+// The original small right-corner temperature (Temp font, 3x5 digits, no
+// degree sign). In the combined view it owns x=22..31, right-justified with
+// 1-col gaps: "-15" fills the region exactly.
 void showTemperatureSmall() {
   // keep the HA fetch cadence when the small style is the only renderer
   if (millis() - prevTimeTemperature >= 60000) {
@@ -132,9 +133,10 @@ void showTemperatureSmall() {
   }
 
   const auto &font = clock_font ("Temp");
-  const int x_start = 22;
-  int y_start = 1;
+  const int y_start = 1;
 
+  byte glyphs[4];  // up to sign + 2 digits, or "---"
+  int n = 0;
   if (currentTemp != -1000) {
     int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
     if (positiveTemp > 99)
@@ -142,27 +144,26 @@ void showTemperatureSmall() {
     byte t1 = positiveTemp / 10;
     byte t2 = positiveTemp % 10;
     if (currentTemp < 0) {
-      // sign@22-23, then digits at 25 and 29: "-15" spans 22..31 exactly
-      printAt (x_start, y_start, MINUS, font, config.temp_color);
-      if (t1 > 0) {
-        printAt (x_start + 3, y_start, t1, font, config.temp_color);
-        printAt (x_start + 7, y_start, t2, font, config.temp_color);
-      } else {
-        printAt (x_start + 3, y_start, t2, font, config.temp_color);
-      }
-    } else if (t1 > 0) {
-      // "21" at 22..28
-      printAt (x_start, y_start, t1, font, config.temp_color);
-      printAt (x_start + 4, y_start, t2, font, config.temp_color);
-    } else {
-      // "7" at 22..24
-      printAt (x_start, y_start, t2, font, config.temp_color);
+      glyphs[n++] = MINUS;
     }
+    if (t1 > 0) {
+      glyphs[n++] = t1;
+    }
+    glyphs[n++] = t2;
   } else {
-    // "---" across the region
-    printAt (x_start, y_start, MINUS, font, config.temp_color);
-    printAt (x_start + 3, y_start, MINUS, font, config.temp_color);
-    printAt (x_start + 7, y_start, MINUS, font, config.temp_color);
+    for (int i = 0; i < 3; ++i) {
+      glyphs[n++] = MINUS;
+    }
+  }
+
+  int total = n - 1;  // gaps
+  for (int i = 0; i < n; ++i) {
+    total += font.glyphs[glyphs[i]].width;
+  }
+  int x = PanelWidth - total;
+  for (int i = 0; i < n; ++i) {
+    printAt (x, y_start, glyphs[i], font, config.temp_color);
+    x += font.glyphs[glyphs[i]].width + 1;
   }
 }
 
