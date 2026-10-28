@@ -117,10 +117,9 @@ void showTemperature() {
       glyphs[n++] = t2;
       degreeSlot = 22;
     } else {
-      slot[0] = 1; slot[1] = 8;
-      glyphs[n++] = t1;
+      slot[0] = 1;
       glyphs[n++] = t2;
-      degreeSlot = 15;
+      degreeSlot = 8;
     }
   }
 
