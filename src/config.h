@@ -71,7 +71,13 @@ bool loadConfig() {
   return true;
 }
 
-DynamicJsonDocument getConfigDoc() {
+// Placeholder the API returns instead of the wifi password and HA token. The
+// POST handlers treat it as "unchanged" so a UI round trip can't overwrite
+// the real secret.
+const char *const SECRET_MASK = "******";
+
+// redact=true is for the HTTP API; saveConfig() needs the real values.
+DynamicJsonDocument getConfigDoc(bool redact = false) {
   DynamicJsonDocument doc(2048);
   doc["brightness"] = config.brightness;
   doc["autoBrightness"] = config.autoBrightness;
@@ -91,9 +97,9 @@ DynamicJsonDocument getConfigDoc() {
   doc["fwVersion"] = FW_VERSION;
   doc["hassConfig"]["hassBaseUrl"] = config.hassBaseUrl;
   doc["hassConfig"]["hassEntityId"] = config.hassEntityId;
-  doc["hassConfig"]["hassAT"] = config.hassAT;
+  doc["hassConfig"]["hassAT"] = (redact && config.hassAT[0]) ? SECRET_MASK : config.hassAT;
   doc["wifi_ssid"] = config.wifi_ssid;
-  doc["wifi_password"] = config.wifi_password;
+  doc["wifi_password"] = (redact && config.wifi_password[0]) ? SECRET_MASK : config.wifi_password;
   doc["wifiMacString"] = config.wifiMacString;
   doc["tzName"] = config.tzName;
   doc["tzValue"] = config.tzValue;

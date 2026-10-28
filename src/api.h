@@ -9,7 +9,7 @@
 
 void getConfig() {
   char buffer[1024];
-  serializeJson(getConfigDoc(), buffer);
+  serializeJson(getConfigDoc(true), buffer);
   Log.verboseln("get config: %s", buffer);
   server.send(200, "text/json", buffer);
 }
@@ -18,7 +18,7 @@ void updateWifiConfig() {
   if (server.arg("wifi_ssid") != "") {
     strlcpy(config.wifi_ssid, server.arg("wifi_ssid").c_str(), sizeof(config.wifi_ssid));
   }
-  if (server.arg("wifi_password") != "") {
+  if (server.arg("wifi_password") != "" && server.arg("wifi_password") != SECRET_MASK) {
     strlcpy(config.wifi_password, server.arg("wifi_password").c_str(), sizeof(config.wifi_password));
   }
   Log.traceln("update wifiConfig");
@@ -33,7 +33,7 @@ void updateHassConfig() {
   if (server.arg("hassEntityId") != "") {
     strlcpy(config.hassEntityId, server.arg("hassEntityId").c_str(), sizeof(config.hassEntityId));
   }
-  if (server.arg("hassAT") != "") {
+  if (server.arg("hassAT") != "" && server.arg("hassAT") != SECRET_MASK) {
     strlcpy(config.hassAT, server.arg("hassAT").c_str(), sizeof(config.hassAT));
   }
   Log.traceln("set hassConfig");
@@ -245,6 +245,5 @@ void setupHandlers() {
   server.on("/reboot", HTTP_GET, reboot);
   server.on("/sound", HTTP_POST, playSound);
   server.on("/showmessage", HTTP_POST, showMessage);
-  // NOTE: /config returns wifi_password and the HA token in its response.
-  // Acceptable on a trusted LAN (the web UI depends on it); do not expose.
+  // NOTE: /config masks wifi_password and the HA token as SECRET_MASK.
 }
