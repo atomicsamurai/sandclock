@@ -164,7 +164,7 @@ def main():
     ap.add_argument("view", nargs="?", default="all",
                     choices=["time", "temp", "small", "combined", "all"])
     ap.add_argument("--time", help="HH:MM (default: now)")
-    ap.add_argument("--temp", type=temp_arg, default=21,
+    ap.add_argument("--temp", type=temp_arg, default=-15,
                     help="integer degrees, or 'none' for the HA-failure dashes")
     ap.add_argument("--dots", choices=["on", "off"], default="on", help="colon state")
     ap.add_argument("--hour-format", type=int, choices=[12, 24], default=24)
