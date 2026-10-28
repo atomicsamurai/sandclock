@@ -11,7 +11,7 @@ import sys
 import time
 
 W, H = 32, 8
-COLON, BLANK, PERIOD, DEGREES, MINUS = 10, 11, 12, 13, 14  # Temp/Compact indices
+COLON, BLANK, PERIOD, DEGREES, MINUS = 10, 11, 12, 13, 14  # Time/Temp indices
 UB_MINUS = 11  # MINUS index in the UserBold font
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -134,14 +134,14 @@ def show_small(c, fonts, t, color):
 
 
 def show_combined(c, fonts, h, m, t, dots, clock, temp):
-    font = fonts["Compact"]
+    font = fonts["Time"]
     h1, h2, m1, m2 = h // 10, h % 10, m // 10, m % 10
     if h1 > 0:
-        c.print_at(0, 0, h1, font, clock)
-    c.print_at(5, 0, h2, font, clock)
-    c.print_at(10, 0, COLON, font, clock if dots else None)
-    c.print_at(13, 0, m1, font, clock)
-    c.print_at(18, 0, m2, font, clock)
+        c.print_at(0, 1, h1, font, clock)
+    c.print_at(5, 1, h2, font, clock)
+    c.print_at(10, 1, COLON, font, clock if dots else None)
+    c.print_at(12, 1, m1, font, clock)
+    c.print_at(17, 1, m2, font, clock)
     show_small(c, fonts, t, temp)
 
 

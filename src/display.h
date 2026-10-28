@@ -180,8 +180,8 @@ void showTemperatureSmall() {
 }
 
 // Combined style (displayStyle 2): fixed split, time left, temp right.
-// Time: Compact font (4x8) in x=0..21, slots H1@0 H2@5 colon@10 M1@13 M2@18.
-// Temp: Temp font (3x5) in x=22..31, top-aligned at y=1.
+// Time: original Time font (4x7) in x=0..20, slots H1@0 H2@5 colon@10 (1 wide)
+// M1@12 M2@17, y=1. Temp: Temp font (3x5) in x=22..31, y=1.
 void showCombined() {
   auto now = ::time (nullptr);
   auto tm = ::localtime (&now);
@@ -199,23 +199,17 @@ void showCombined() {
   byte m1 = thismins / 10;
   byte m2 = thismins % 10;
 
-  const auto &font = clock_font ("Compact");
-  const int y_start = 0;
+  const auto &font = clock_font ("Time");
+  const int y_start = 1;
 
+  // single-digit hour leaves the H1 slot dark so the minutes never move
   if (h1 > 0) {
-    // H1@0-3, H2@5-8, colon@10-11, M1@13-16, M2@18-21
     printAt (0, y_start, h1, font, config.clock_color);
-    printAt (5, y_start, h2, font, config.clock_color);
-    printAt (10, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
-    printAt (13, y_start, m1, font, config.clock_color);
-    printAt (18, y_start, m2, font, config.clock_color);
-  } else {
-    // single-digit hour: same right-anchored slots, H at 5
-    printAt (5, y_start, h2, font, config.clock_color);
-    printAt (10, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
-    printAt (13, y_start, m1, font, config.clock_color);
-    printAt (18, y_start, m2, font, config.clock_color);
   }
+  printAt (5, y_start, h2, font, config.clock_color);
+  printAt (10, y_start, COLON, font, dotsOn ? config.clock_color : color_black);
+  printAt (12, y_start, m1, font, config.clock_color);
+  printAt (17, y_start, m2, font, config.clock_color);
   dotsOn = !dotsOn;
 
   showTemperatureSmall();
