@@ -80,20 +80,19 @@ void showTemperature() {
     currentTemp = getTemperatureFromHA();
   }
 
-  // Exact same UserBold glyphs at scale 1 as the clock, laid out like
-  // showTime(): 6-wide glyphs, 2-wide colon slots, 1-col gaps, 1-col
-  // margins (slots 1/8/15/18/25). "-15" renders as MINUS + "1" + "5" in
-  // the first three slots; unused trailing slots stay dark.
+  // Exact same UserBold glyphs at scale 1 as the clock (6-wide boxes, 1-col
+  // gaps), right-justified to the clock's right margin (last ink column 30).
+  // The degree dot sits in cols 3-4 of its box, so with the box at x=26 the
+  // last digit box ends at 27. "---" on HA failure has no degree: the last
+  // minus box is at 26 so its ink also ends at 30.
   const auto &font = clock_font ("UserBold");
   const int dMinus = 11; // MINUS glyph index in the UserBold font
-  int y_start = 0;
+  const int y_start = 0;
 
-  byte glyphs[4];  // up to 3 digits/sign + degree glyph
+  byte glyphs[3];  // up to sign + 2 digits
   int n = 0;
-  int slot[4];
-  int degreeSlot = -1;
-  if (currentTemp == -1000) { // no reading from HA: "---" in slots 1-3
-    slot[0] = 1; slot[1] = 8; slot[2] = 18;
+  bool withDegree = false;
+  if (currentTemp == -1000) {
     for (int i = 0; i < 3; ++i) {
       glyphs[n++] = dMinus;
     }
@@ -104,30 +103,21 @@ void showTemperature() {
     byte t1 = positiveTemp / 10;
     byte t2 = positiveTemp % 10;
     if (currentTemp < 0) {
-      slot[0] = 1; slot[1] = 8; slot[2] = 18;
       glyphs[n++] = dMinus;
-      if (t1 > 0) {
-        glyphs[n++] = t1;
-      }
-      glyphs[n++] = t2;
-      degreeSlot = slot[n-1] + 7;
-    } else if (t1 > 0) {
-      slot[0] = 1; slot[1] = 8; slot[2] = 15;
-      glyphs[n++] = t1;
-      glyphs[n++] = t2;
-      degreeSlot = 22;
-    } else {
-      slot[0] = 1;
-      glyphs[n++] = t2;
-      degreeSlot = 8;
     }
+    if (t1 > 0) {
+      glyphs[n++] = t1;
+    }
+    glyphs[n++] = t2;
+    withDegree = true;
   }
 
+  const int lastX = withDegree ? 22 : 26;
   for (int i = 0; i < n; ++i) {
-    printAt (slot[i], y_start, glyphs[i], font, config.temp_color);
+    printAt (lastX - 7 * (n - 1 - i), y_start, glyphs[i], font, config.temp_color);
   }
-  if (degreeSlot >= 0) {
-    printAt (degreeSlot, y_start, DEGREES, font, config.temp_color);
+  if (withDegree) {
+    printAt (26, y_start, DEGREES, font, config.temp_color);
   }
 }
 
@@ -159,17 +149,14 @@ void showTemperatureSmall() {
         printAt (x_start + 7, y_start, t2, font, config.temp_color);
       } else {
         printAt (x_start + 3, y_start, t2, font, config.temp_color);
-        printAt (x_start + 8, y_start, DEGREES, font, config.temp_color);
       }
     } else if (t1 > 0) {
       // "21" at 22..28
       printAt (x_start, y_start, t1, font, config.temp_color);
       printAt (x_start + 4, y_start, t2, font, config.temp_color);
-      printAt (x_start + 8, y_start, DEGREES, font, config.temp_color);
     } else {
       // "7" at 22..24
       printAt (x_start, y_start, t2, font, config.temp_color);
-      printAt (x_start + 4, y_start, DEGREES, font, config.temp_color);
     }
   } else {
     // "---" across the region

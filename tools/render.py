@@ -79,32 +79,18 @@ def show_time(c, fonts, h, m, dots, clock):
 
 def show_temperature(c, fonts, t, color):
     font = fonts["UserBold"]
-    glyphs, slots, degree_slot = [], [], -1
     if t == -1000:
-        slots = [1, 8, 18]
-        glyphs = [UB_MINUS] * 3
+        glyphs, with_degree = [UB_MINUS] * 3, False
     else:
         p = min(abs(t), 99)
         t1, t2 = p // 10, p % 10
-        if t < 0:
-            slots = [1, 8, 18]
-            glyphs.append(UB_MINUS)
-            if t1 > 0:
-                glyphs.append(t1)
-            glyphs.append(t2)
-            degree_slot = slots[len(glyphs) - 1] + 7
-        elif t1 > 0:
-            slots = [1, 8, 15]
-            glyphs = [t1, t2]
-            degree_slot = 22
-        else:
-            slots = [1]
-            glyphs = [t2]
-            degree_slot = 8
-    for g, s in zip(glyphs, slots):
-        c.print_at(s, 0, g, font, color)
-    if degree_slot >= 0:
-        c.print_at(degree_slot, 0, DEGREES, font, color)
+        glyphs = ([UB_MINUS] if t < 0 else []) + ([t1] if t1 > 0 else []) + [t2]
+        with_degree = True
+    last_x = 22 if with_degree else 26
+    for i, g in enumerate(glyphs):
+        c.print_at(last_x - 7 * (len(glyphs) - 1 - i), 0, g, font, color)
+    if with_degree:
+        c.print_at(26, 0, DEGREES, font, color)
 
 
 def show_small(c, fonts, t, color):
@@ -123,14 +109,11 @@ def show_small(c, fonts, t, color):
             c.print_at(x0 + 7, y0, t2, font, color)
         else:
             c.print_at(x0 + 3, y0, t2, font, color)
-            c.print_at(x0 + 8, y0, DEGREES, font, color)
     elif t1 > 0:
         c.print_at(x0, y0, t1, font, color)
         c.print_at(x0 + 4, y0, t2, font, color)
-        c.print_at(x0 + 8, y0, DEGREES, font, color)
     else:
         c.print_at(x0, y0, t2, font, color)
-        c.print_at(x0 + 4, y0, DEGREES, font, color)
 
 
 def show_combined(c, fonts, h, m, t, dots, clock, temp):
