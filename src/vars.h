@@ -10,7 +10,7 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.5.0"
+#define FW_VERSION "2.6.0"
 
 /*
  * Shared globals, grouped by concern. Everything here is defined once and
@@ -22,7 +22,7 @@
 int sensorPin = A0;   // LDR for auto brightness
 int buzzerPin = D7;
 
-// ---- Config (persisted to SPIFFS as /config.json, see config.h) -----------
+// ---- Config (persisted to the EEPROM sector, see config.h) -----------------
 struct ConfigObject {
   bool autoBrightness;
   byte brightness;
