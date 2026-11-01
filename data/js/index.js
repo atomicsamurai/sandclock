@@ -22,7 +22,79 @@ $(document).ready(function () {
     toggleAutoBrightness();
   });
   getServerValues();
+  $('#deviceInfoBody').on('show.bs.collapse', getDeviceInfo);
 });
+
+function fmtBytes(n) {
+  if (n >= 1048576) return `${(n / 1048576).toFixed(2)} MB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${n} B`;
+}
+
+function fmtUptime(s) {
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600),
+    m = Math.floor(s % 3600 / 60), sec = s % 60;
+  return `${d ? d + "d " : ""}${h}h ${m}m ${sec}s`;
+}
+
+function fmtRssi(r) {
+  const q = r > -50 ? "excellent" : r > -60 ? "good" : r > -70 ? "fair" : "weak";
+  return `${r} dBm (${q})`;
+}
+
+function getDeviceInfo() {
+  $.get("/info", i => {
+    const sections = [
+      ["Firmware", [
+        ["Version", i.fwVersion],
+        ["Built", i.buildDate],
+        ["Arduino core", i.coreVersion],
+        ["SDK", i.sdkVersion],
+      ]],
+      ["Network", [
+        ["Mode", i.wifiMode + (i.wifiConnected ? "" : " (not connected)")],
+        ["SSID", i.ssid],
+        ["Signal", i.wifiMode === "STA" ? fmtRssi(i.rssi) : "n/a"],
+        ["Channel", i.channel],
+        ["BSSID", i.bssid],
+        ["MAC", i.mac],
+        ["IP", i.ip],
+        ["Gateway", i.gateway],
+        ["Subnet", i.subnet],
+        ["DNS", i.dns],
+        ["Hostname", i.hostname],
+      ]],
+      ["Time and sensors", [
+        ["Clock time", i.localTime + (i.timeSynced ? "" : " (not synced)")],
+        ["Timezone", `${i.tzName} (${i.tzValue})`],
+        ["Temperature", i.temperature === -1000 ? "no reading" : `${i.temperature}`],
+        ["Light sensor", i.ldr],
+      ]],
+      ["System", [
+        ["Uptime", fmtUptime(i.uptimeSec)],
+        ["Last reset", i.resetReason],
+        ["Chip ID", i.chipId],
+        ["CPU", `${i.cpuMHz} MHz`],
+        ["Free heap", `${fmtBytes(i.freeHeap)} (largest block ${fmtBytes(i.maxFreeBlock)}, ${i.heapFragmentation}% fragmented)`],
+        ["Flash", `${fmtBytes(i.flashSize)} @ ${i.flashSpeed / 1000000} MHz`],
+        ["Sketch", `${fmtBytes(i.sketchSize)} used, ${fmtBytes(i.freeSketchSpace)} free`],
+        ["Filesystem", i.fsTotal ? `${fmtBytes(i.fsUsed)} of ${fmtBytes(i.fsTotal)} used` : "n/a"],
+      ]],
+    ];
+    const $root = $('#deviceInfo').empty();
+    sections.forEach(([title, rows]) => {
+      const $col = $('<div class="col-md-6 col-lg-3 mb-3">').append($('<h6>').text(title));
+      const $dl = $('<dl class="mb-0">');
+      rows.forEach(([k, v]) => {
+        $dl.append($('<dt class="small text-muted font-weight-normal">').text(k));
+        $dl.append($('<dd class="text-break">').text(v));
+      });
+      $root.append($col.append($dl));
+    });
+  }).fail(xhr => {
+    $('#deviceInfo').text(`Could not load device info (${xhr.status})`);
+  });
+}
 
 function getServerValues() {
   $.get("/config", data => {

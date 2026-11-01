@@ -229,7 +229,7 @@
                 <option value="MST7MDT,M3.2.0,M11.1.0">America/Denver</option>
                 <option value="EST5EDT,M3.2.0,M11.1.0">America/Detroit</option>
                 <option value="AST4">America/Dominica</option>
-                <option value="MST7MDT,M3.2.0,M11.1.0">America/Edmonton</option>
+                <option value="MDT6">America/Edmonton</option>
                 <option value="<-05>5">America/Eirunepe</option>
                 <option value="CST6">America/El Salvador</option>
                 <option value="<-03>3">America/Fortaleza</option>
@@ -659,6 +659,17 @@
             </div>
             <button type="button" class="btn btn-primary" onclick="beep1()">Single</button>
             <button type="button" class="btn btn-primary" onclick="beep2()">Double</button>
+          </div>
+        </div>
+      </div>
+      <br />
+      <div class="card">
+        <div class="card-body">
+          <a class="h5 d-block text-dark mb-0" data-toggle="collapse" href="#deviceInfoBody" role="button"
+            aria-expanded="false" aria-controls="deviceInfoBody">Device info <small class="text-muted">(show/hide)</small></a>
+          <div class="collapse" id="deviceInfoBody">
+            <div class="row mt-3" id="deviceInfo"></div>
+            <button type="button" class="btn btn-primary mt-3" onclick="getDeviceInfo()">Refresh</button>
           </div>
         </div>
       </div>

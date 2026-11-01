@@ -227,7 +227,64 @@ void showMessage() {
   server.send(200, "text/json", "{\"result\":\"ok\"}");
 }
 
+void getInfo() {
+  DynamicJsonDocument doc(1536);
+  bool ap = WiFi.getMode() == WIFI_AP;
+
+  doc["fwVersion"] = FW_VERSION;
+  doc["buildDate"] = String(__DATE__) + " " + __TIME__;
+  doc["coreVersion"] = ESP.getCoreVersion();
+  doc["sdkVersion"] = ESP.getSdkVersion();
+
+  doc["mac"] = WiFi.macAddress();
+  doc["hostname"] = "sandclock.local";
+  doc["wifiMode"] = ap ? "AP" : "STA";
+  doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
+  doc["ssid"] = ap ? String("SandClock") : WiFi.SSID();
+  doc["bssid"] = ap ? WiFi.softAPmacAddress() : WiFi.BSSIDstr();
+  doc["rssi"] = ap ? 0 : WiFi.RSSI();
+  doc["channel"] = WiFi.channel();
+  doc["ip"] = (ap ? WiFi.softAPIP() : WiFi.localIP()).toString();
+  doc["gateway"] = WiFi.gatewayIP().toString();
+  doc["subnet"] = WiFi.subnetMask().toString();
+  doc["dns"] = WiFi.dnsIP().toString();
+
+  time_t now = time(nullptr);
+  char timeBuf[40] = "";
+  strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M:%S %Z", ::localtime(&now));
+  doc["timeSynced"] = now > 1600000000;  // before NTP sync the clock reads ~1970
+  doc["localTime"] = timeBuf;
+  doc["tzName"] = config.tzName;
+  doc["tzValue"] = config.tzValue;
+
+  doc["temperature"] = currentTemp;  // -1000 = no HA reading yet
+  doc["ldr"] = sensorValue;
+
+  doc["uptimeSec"] = millis() / 1000;
+  doc["resetReason"] = ESP.getResetReason();
+  doc["cpuMHz"] = ESP.getCpuFreqMHz();
+  doc["chipId"] = String(ESP.getChipId(), HEX);
+  doc["freeHeap"] = ESP.getFreeHeap();
+  doc["maxFreeBlock"] = ESP.getMaxFreeBlockSize();
+  doc["heapFragmentation"] = ESP.getHeapFragmentation();
+  doc["flashSize"] = ESP.getFlashChipRealSize();
+  doc["flashSpeed"] = ESP.getFlashChipSpeed();
+  doc["sketchSize"] = ESP.getSketchSize();
+  doc["freeSketchSpace"] = ESP.getFreeSketchSpace();
+
+  FSInfo fs;
+  if (SPIFFS.info(fs)) {
+    doc["fsTotal"] = fs.totalBytes;
+    doc["fsUsed"] = fs.usedBytes;
+  }
+
+  String out;
+  serializeJson(doc, out);
+  server.send(200, "text/json", out);
+}
+
 void setupHandlers() {
+  server.on("/info", HTTP_GET, getInfo);
   server.on("/config", HTTP_GET, getConfig);
   server.on("/config/hassConfig", HTTP_POST, updateHassConfig);
   server.on("/config/clockcolor", HTTP_POST, setClockColor);
