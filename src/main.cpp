@@ -149,7 +149,7 @@ void setup() {
     }
   }
 
-  httpUpdateServer.setup(&server);
+  httpUpdateServer.setup(&server, "/update", AUTH_USER, config.authPassword);
 
   // HTTP Handlers
   setupHandlers();
@@ -175,6 +175,9 @@ void loop() {
     minFreeHeap = freeHeap;
   }
   server.handleClient();
+  if (rebootPending && millis() >= rebootAtMs) {
+    ESP.restart();
+  }
   maintainWifi();
   if (currentMillis - prevTimeBrightness >= 5000) { // every 5 secs
     prevTimeBrightness = currentMillis;

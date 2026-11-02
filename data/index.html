@@ -663,6 +663,19 @@
       <br />
       <div class="card">
         <div class="card-body">
+          <div class="form-group">
+            <label>Security</label>
+            <br />
+            <label for="authPassword">Admin password (user: admin, 8-31 characters, empty turns protection off)</label>
+            <input type="password" id="authPassword" class="form-control" autocomplete="new-password" value="">
+            <small id="authStatus" class="form-text text-muted"></small>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="setAuthPassword()">Set Password</button>
+        </div>
+      </div>
+      <br />
+      <div class="card">
+        <div class="card-body">
           <a class="h5 d-block text-dark mb-0" data-toggle="collapse" href="#deviceInfoBody" role="button"
             aria-expanded="false" aria-controls="deviceInfoBody">Device info <small class="text-muted">(show/hide)</small></a>
           <div class="collapse" id="deviceInfoBody">

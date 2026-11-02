@@ -72,6 +72,7 @@ function getDeviceInfo() {
       ["Firmware", [
         ["Version", i.fwVersion],
         ["Built", i.buildDate],
+        ["Revision", i.gitRev],
         ["Arduino core", i.coreVersion],
         ["SDK", i.sdkVersion],
       ]],
@@ -128,6 +129,9 @@ function getServerValues() {
     console.log("config: ", data);
     $(document).attr("title", `Matrix Clock [${data.wifiMacString.toLowerCase().replaceAll(":", "")}]`);
     $('#fwVersion').text(data.fwVersion ? `Firmware version: ${data.fwVersion}` : "Firmware version: unknown (pre-2.1.0)");
+    $('#authStatus').text(data.authEnabled
+      ? "Password protection is on."
+      : "Password protection is off: anyone on your network can change settings.");
     $('#wifi_ssid').val(data.wifi_ssid);
     $('#wifi_password').val(data.wifi_password);
     $('#clock_color').minicolors('value', data.clock_color);
@@ -157,6 +161,18 @@ function postSettings(url, data) {
   $.post(url, data)
     .done(resp => console.log(`${url}: ok`, resp))
     .fail((xhr) => console.warn(`${url}: rejected`, xhr.status, xhr.responseText));
+}
+
+function setAuthPassword() {
+  const pw = $('#authPassword').val();
+  const msg = pw ? "Set this password? The clock reboots to apply it." : "Turn password protection off? The clock reboots to apply it.";
+  if (!confirm(msg)) return;
+  $.post("/config/auth", { authPassword: pw })
+    .done(() => {
+      $('#authStatus').text("Saved. Rebooting...");
+      setTimeout(() => location.reload(), 12000);
+    })
+    .fail(xhr => alert(`Rejected (${xhr.status}): ${xhr.responseText}`));
 }
 
 function setWifiConfig() {

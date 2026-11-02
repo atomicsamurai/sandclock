@@ -15,6 +15,7 @@ void initDefaultConfig() {
   config.wifiMacString = WiFi.macAddress();
   strcpy(config.tzName, "Etc/UTC");
   strcpy(config.tzValue, "UTC0");
+  strcpy(config.authPassword, "");
   strcpy(config.hassBaseUrl, "");
   strcpy(config.hassEntityId, "");
   strcpy(config.hassAT, "");
@@ -96,6 +97,7 @@ bool applyConfigJson(const char *json) {
   loadString(config.wifi_password, sizeof(config.wifi_password), doc["wifi_password"]);
   loadString(config.tzName, sizeof(config.tzName), doc["tzName"]);
   loadString(config.tzValue, sizeof(config.tzValue), doc["tzValue"]);
+  loadString(config.authPassword, sizeof(config.authPassword), doc["authPassword"]);
 
   char buffer[1024];
   serializeJson(doc, buffer);
@@ -145,6 +147,10 @@ DynamicJsonDocument getConfigDoc(bool redact = false) {
   doc["wifiMacString"] = config.wifiMacString;
   doc["tzName"] = config.tzName;
   doc["tzValue"] = config.tzValue;
+  doc["authEnabled"] = config.authPassword[0] != 0;
+  if (!redact) {
+    doc["authPassword"] = config.authPassword;  // never sent over HTTP, only saved
+  }
   return doc;
 }
 

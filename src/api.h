@@ -7,6 +7,41 @@
 #include "time_ops.h"
 #include "vars.h"
 
+/*
+ * Optional HTTP Basic auth (user "admin"). With no password set every
+ * endpoint stays open, as before; once set, every API call, the OTA page and
+ * the index page need it. Basic auth sends the password in clear text, so
+ * this keeps casual and accidental access out, not an attacker on the LAN.
+ */
+const char *const AUTH_USER = "admin";
+
+bool authorized() {
+  if (config.authPassword[0] == 0 || server.authenticate(AUTH_USER, config.authPassword)) {
+    return true;
+  }
+  server.requestAuthentication(BASIC_AUTH, "SandClock");
+  return false;
+}
+
+ESP8266WebServer::THandlerFunction secured(ESP8266WebServer::THandlerFunction handler) {
+  return [handler]() {
+    if (authorized()) {
+      handler();
+    }
+  };
+}
+
+void serveIndex() {
+  File f = LittleFS.open("/index.html", "r");
+  if (!f) {
+    server.send(404, "text/plain", "404: index.html missing, flash the filesystem image");
+    return;
+  }
+  server.sendHeader("Cache-Control", "no-cache");
+  server.streamFile(f, "text/html");
+  f.close();
+}
+
 void getConfig() {
   char buffer[1024];
   serializeJson(getConfigDoc(true), buffer);
@@ -179,6 +214,24 @@ void setTimezone() {
   getConfig();
 }
 
+void setAuth() {
+  if (!server.hasArg("authPassword")) {
+    server.send(400, "text/plain", "400: Invalid Request");
+    return;
+  }
+  String pw = server.arg("authPassword");
+  if (pw.length() != 0 && (pw.length() < 8 || pw.length() >= sizeof(config.authPassword))) {
+    server.send(400, "text/plain", "400: password must be 8-31 characters (empty disables auth)");
+    return;
+  }
+  strlcpy(config.authPassword, pw.c_str(), sizeof(config.authPassword));
+  saveConfig();
+  // the OTA page's credentials are fixed when the update server is set up at boot
+  rebootPending = true;
+  rebootAtMs = millis() + 1500;
+  server.send(200, "text/json", "{\"result\":\"ok\",\"rebooting\":true}");
+}
+
 void forceTemp() {
   currentTemp = server.arg("forceTemp").toInt();
   server.send(200, "text/json", "{\"result\":\"ok\"}");
@@ -230,6 +283,7 @@ void getInfo() {
 
   doc["fwVersion"] = FW_VERSION;
   doc["buildDate"] = String(__DATE__) + " " + __TIME__;
+  doc["gitRev"] = GIT_REV;
   doc["coreVersion"] = ESP.getCoreVersion();
   doc["sdkVersion"] = ESP.getSdkVersion();
 
@@ -290,23 +344,26 @@ void getInfo() {
 }
 
 void setupHandlers() {
-  server.on("/info", HTTP_GET, getInfo);
-  server.on("/config", HTTP_GET, getConfig);
-  server.on("/config/hassConfig", HTTP_POST, updateHassConfig);
-  server.on("/config/clockcolor", HTTP_POST, setClockColor);
-  server.on("/config/tempcolor", HTTP_POST, setTempColor);
-  server.on("/config/othercolor", HTTP_POST, setOtherColor);
-  server.on("/config/brightness", HTTP_POST, setBrightness);
-  server.on("/config/autobrightness", HTTP_POST, toggleAutoBrightness);
-  server.on("/config/hourformat", HTTP_POST, setHourFormat);
-  server.on("/config/displaystyle", HTTP_POST, setDisplayStyle);
-  server.on("/config/wifiConfig", HTTP_POST, updateWifiConfig);
-  server.on("/config/timezones", HTTP_POST, setTimezone);
-  server.on("/forcetemp", HTTP_POST, forceTemp);
-  server.on("/forcetime", HTTP_POST, forceTime);
-  server.on("/syncTime", HTTP_GET, syncTime);
-  server.on("/reboot", HTTP_GET, reboot);
-  server.on("/sound", HTTP_POST, playSound);
-  server.on("/showmessage", HTTP_POST, showMessage);
+  server.on("/", HTTP_GET, secured(serveIndex));
+  server.on("/index.html", HTTP_GET, secured(serveIndex));
+  server.on("/info", HTTP_GET, secured(getInfo));
+  server.on("/config", HTTP_GET, secured(getConfig));
+  server.on("/config/hassConfig", HTTP_POST, secured(updateHassConfig));
+  server.on("/config/clockcolor", HTTP_POST, secured(setClockColor));
+  server.on("/config/tempcolor", HTTP_POST, secured(setTempColor));
+  server.on("/config/othercolor", HTTP_POST, secured(setOtherColor));
+  server.on("/config/brightness", HTTP_POST, secured(setBrightness));
+  server.on("/config/autobrightness", HTTP_POST, secured(toggleAutoBrightness));
+  server.on("/config/hourformat", HTTP_POST, secured(setHourFormat));
+  server.on("/config/displaystyle", HTTP_POST, secured(setDisplayStyle));
+  server.on("/config/wifiConfig", HTTP_POST, secured(updateWifiConfig));
+  server.on("/config/auth", HTTP_POST, secured(setAuth));
+  server.on("/config/timezones", HTTP_POST, secured(setTimezone));
+  server.on("/forcetemp", HTTP_POST, secured(forceTemp));
+  server.on("/forcetime", HTTP_POST, secured(forceTime));
+  server.on("/syncTime", HTTP_GET, secured(syncTime));
+  server.on("/reboot", HTTP_GET, secured(reboot));
+  server.on("/sound", HTTP_POST, secured(playSound));
+  server.on("/showmessage", HTTP_POST, secured(showMessage));
   // NOTE: /config masks wifi_password and the HA token as SECRET_MASK.
 }

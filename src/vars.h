@@ -10,7 +10,13 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.7.0"
+#define FW_VERSION "2.8.0"
+
+// Set at build time by tools/git_rev.py (git describe), so /info shows exactly
+// which commit is running.
+#ifndef GIT_REV
+#define GIT_REV "unknown"
+#endif
 
 /*
  * Shared globals, grouped by concern. Everything here is defined once and
@@ -35,6 +41,7 @@ struct ConfigObject {
   char wifi_password[32];
   char tzName[32];
   char tzValue[32];
+  char authPassword[32];  // HTTP Basic password for user "admin"; empty = auth off
   RgbColor clock_color;
   RgbColor temp_color;
   RgbColor other_color;
@@ -77,6 +84,8 @@ volatile time_t ntpLastSync = 0;    // epoch of the last SNTP time update (0 = n
 volatile uint32_t ntpSyncCount = 0;
 uint32_t minFreeHeap = 0xFFFFFFFF;  // lowest free heap seen since boot
 bool apActive = false;              // setup AP is up (WiFi not connected)
+bool rebootPending = false;         // loop() restarts at rebootAtMs (lets a handler reply first)
+unsigned long rebootAtMs = 0;
 
 // ---- Network services ------------------------------------------------------
 ESP8266WebServer server(80);
