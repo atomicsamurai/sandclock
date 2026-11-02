@@ -1,7 +1,6 @@
 #pragma once
 
 #include "digits.h"
-#include "hass.h"  // getTemperatureFromHA, used by showTemperature()
 
 void clearDisplay() {
   for (int i = 0; i != PanelWidth; ++i) {
@@ -88,11 +87,6 @@ void showNoTime() {
 }
 
 void showTemperature() {
-  if (millis() - prevTimeTemperature >= 60000) { // refresh from HA every minute
-    prevTimeTemperature = millis();
-    currentTemp = getTemperatureFromHA();
-  }
-
   // Exact same UserBold glyphs at scale 1 as the clock (6-wide boxes, 1-col
   // gaps), right-justified to the clock's right margin (last ink column 30).
   // The degree dot sits in cols 3-4 of its box, so with the box at x=26 the
@@ -139,12 +133,6 @@ void showTemperature() {
 // degree sign). In the combined view it owns x=22..31, right-justified with
 // 1-col gaps: "-15" fills the region exactly.
 void showTemperatureSmall() {
-  // keep the HA fetch cadence when the small style is the only renderer
-  if (millis() - prevTimeTemperature >= 60000) {
-    prevTimeTemperature = millis();
-    currentTemp = getTemperatureFromHA();
-  }
-
   const auto &font = clock_font ("Temp");
   const int y_start = 1;
 

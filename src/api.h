@@ -75,6 +75,8 @@ void updateHassConfig() {
   saveConfig();
   // sometehing changed, get latest temp from hass
   currentTemp = getTemperatureFromHA();
+  tempFetchTried = true;
+  prevTimeTemperature = millis();
   getConfig();
 }
 
@@ -237,8 +239,17 @@ void forceTemp() {
   server.send(200, "text/json", "{\"result\":\"ok\"}");
 }
 
+// Debug aid: sets the system clock from a browser epoch in milliseconds. The
+// next SNTP update (hourly, or via Sync Time) puts the real time back.
 void forceTime() {
-  setTime(strtoul(server.arg("forceTime").c_str(), NULL, 0)/1000);
+  // 64-bit parse: a millisecond epoch doesn't fit the 32-bit unsigned long
+  unsigned long long ms = strtoull(server.arg("forceTime").c_str(), NULL, 10);
+  if (ms < 1600000000000ULL) {
+    server.send(400, "text/plain", "400: forceTime must be a millisecond epoch");
+    return;
+  }
+  struct timeval tv = { (time_t)(ms / 1000), 0 };
+  settimeofday(&tv, nullptr);
   server.send(200, "text/json", "{\"result\":\"ok\"}");
 }
 
@@ -312,7 +323,7 @@ void getInfo() {
   doc["tzValue"] = config.tzValue;
 
   doc["temperature"] = currentTemp;  // -1000 = no HA reading yet
-  doc["haConfigured"] = config.hassAT[0] && config.hassBaseUrl[0] && config.hassEntityId[0];
+  doc["haConfigured"] = hassConfigured();
   doc["haLastCode"] = haLastCode;
   doc["haLastAttemptAgoSec"] = haLastAttemptMs ? (long)((millis() - haLastAttemptMs) / 1000) : -1;
   doc["haLastOkAgoSec"] = haLastOkMs ? (long)((millis() - haLastOkMs) / 1000) : -1;

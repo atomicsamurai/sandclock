@@ -10,7 +10,7 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.8.0"
+#define FW_VERSION "2.9.0"
 
 // Set at build time by tools/git_rev.py (git describe), so /info shows exactly
 // which commit is running.
@@ -71,6 +71,7 @@ uint16_t messageRepeatCount = 1;
 unsigned long prevTime = 0;              // 1s clock/temp tick
 unsigned long prevTimeBrightness = 0;    // 5s brightness tick
 unsigned long prevTimeTemperature = 0;   // 60s HA fetch tick
+bool tempFetchTried = false;             // false until the first HA fetch, so it runs right after boot
 int beepDone = 0;                        // chime latch for checkChime()
 
 // ---- Sound ----------------------------------------------------------------

@@ -3,7 +3,6 @@
 #include <DNSServer.h>
 #include <LittleFS.h>
 #include <ESP8266HTTPClient.h>
-#include <TimeLib.h>
 #include <ArduinoJson.h>
 #include <WiFiClient.h>
 #include <ArduinoLog.h>
@@ -197,6 +196,7 @@ void loop() {
           prevTime = currentMillis;
           checkChime();
           warnIfNtpStale();
+          refreshTemperatureIfDue();
           clearDisplay();
           if (!timeSynced()) {
             showNoTime();

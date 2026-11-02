@@ -15,7 +15,12 @@ bool timeSynced() {
   return time(nullptr) > 1600000000;
 }
 
-void onTimeSet() {
+// fromSntp is false for a manual settimeofday() (the /forcetime debug button),
+// which must not count as an NTP sync.
+void onTimeSet(bool fromSntp) {
+  if (!fromSntp) {
+    return;
+  }
   ntpLastSync = time(nullptr);
   ntpSyncCount++;
   Log.noticeln("[NTP] time set (update #%d)", (int)ntpSyncCount);

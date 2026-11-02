@@ -2,8 +2,12 @@
 
 #include "vars.h"
 
+bool hassConfigured() {
+  return config.hassAT[0] && config.hassBaseUrl[0] && config.hassEntityId[0];
+}
+
 long getTemperatureFromHA() {
-  if (strlen(config.hassAT) == 0 || strlen(config.hassBaseUrl) == 0 || strlen(config.hassEntityId) == 0) {
+  if (!hassConfigured()) {
     Log.infoln("[HTTP] hass not configured, skipping reading temp...");
     return -1000;
   }
@@ -12,6 +16,7 @@ long getTemperatureFromHA() {
   }
   WiFiClient client;
   HTTPClient http;
+  http.setTimeout(2000);  // blocks loop(): keep an unreachable HA from stalling the clock for long
   String hassBaseUrlString = config.hassBaseUrl;
   String hassEntityIdString = config.hassEntityId;
   String hassATString = config.hassAT;
@@ -32,19 +37,21 @@ long getTemperatureFromHA() {
       Log.traceln("[HTTP] GET... code: %d", httpCode);
 
       if (httpCode == HTTP_CODE_OK) {
-        DynamicJsonDocument doc(1024);
-        deserializeJson(doc, http.getString());
-        const char *tempString = doc["state"];
-        if (tempString != nullptr) {
-          // "unavailable"/"unknown" must not parse as 0 degrees
-          char *end;
-          long v = strtol(tempString, &end, 10);
-          if (end != tempString) {
-            temp = v;
-            haLastOkMs = haLastAttemptMs;
-          } else {
-            haLastCode = -2;
-          }
+        // HA's reply carries every attribute; keep only "state" so a large
+        // sensor entity can't overflow the document.
+        StaticJsonDocument<64> filter;
+        filter["state"] = true;
+        StaticJsonDocument<128> doc;
+        DeserializationError err = deserializeJson(doc, http.getString(), DeserializationOption::Filter(filter));
+        const char *tempString = err ? nullptr : doc["state"].as<const char *>();
+        char *end = nullptr;
+        // "unavailable"/"unknown" must not parse as 0 degrees
+        long v = tempString ? strtol(tempString, &end, 10) : 0;
+        if (tempString && end != tempString) {
+          temp = v;
+          haLastOkMs = haLastAttemptMs;
+        } else {
+          haLastCode = -2;
         }
       }
     } else {
@@ -56,4 +63,27 @@ long getTemperatureFromHA() {
     Log.errorln("[HTTP] Unable to connect");
   }
   return temp;
+}
+
+const unsigned long TEMP_FETCH_MS = 60000;           // how often to ask HA
+const unsigned long TEMP_STALE_MS = 15UL * 60000;    // show "---" once the last good reading is this old
+
+// Called once a second from loop(). Fetches right after WiFi comes up, then
+// every TEMP_FETCH_MS, whichever screen is showing. A failed fetch keeps the
+// last good reading for TEMP_STALE_MS so a brief HA outage doesn't blank it.
+void refreshTemperatureIfDue() {
+  if (WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+  if (tempFetchTried && millis() - prevTimeTemperature < TEMP_FETCH_MS) {
+    return;
+  }
+  tempFetchTried = true;
+  prevTimeTemperature = millis();
+  long t = getTemperatureFromHA();
+  if (t != -1000) {
+    currentTemp = t;
+  } else if (!hassConfigured() || haLastOkMs == 0 || millis() - haLastOkMs > TEMP_STALE_MS) {
+    currentTemp = -1000;
+  }
 }
