@@ -171,12 +171,9 @@ void setTimezone() {
     server.send(400, "text/plain", "400: Invalid Request");
     return;
   }
-  //strlcpy(config.hassBaseUrl, server.arg("hassBaseUrl").c_str(), sizeof(config.hassBaseUrl));
   strlcpy(config.tzName, server.arg("tzName").c_str(), sizeof(config.tzName));
   strlcpy(config.tzValue, server.arg("tzValue").c_str(), sizeof(config.tzValue));
-  // config.tzName = server.arg("tzName");
-  // config.tzValue = server.arg("tzValue");
-  
+
   applyTimezone();
   saveConfig();
   getConfig();
@@ -193,7 +190,7 @@ void forceTime() {
 }
 
 void syncTime() {
-  //  syncNTP(false);
+  applyTimezone();  // restarts SNTP, which syncs immediately
   server.send(200, "text/json", "{\"result\":\"ok\"}");
 }
 
@@ -228,8 +225,8 @@ void showMessage() {
 }
 
 void getInfo() {
-  DynamicJsonDocument doc(1536);
-  bool ap = WiFi.getMode() == WIFI_AP;
+  DynamicJsonDocument doc(2048);
+  bool up = WiFi.status() == WL_CONNECTED;
 
   doc["fwVersion"] = FW_VERSION;
   doc["buildDate"] = String(__DATE__) + " " + __TIME__;
@@ -238,13 +235,14 @@ void getInfo() {
 
   doc["mac"] = WiFi.macAddress();
   doc["hostname"] = "sandclock.local";
-  doc["wifiMode"] = ap ? "AP" : "STA";
-  doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
-  doc["ssid"] = ap ? String("SandClock") : WiFi.SSID();
-  doc["bssid"] = ap ? WiFi.softAPmacAddress() : WiFi.BSSIDstr();
-  doc["rssi"] = ap ? 0 : WiFi.RSSI();
+  doc["wifiMode"] = apActive ? "AP+STA" : "STA";
+  doc["apActive"] = apActive;
+  doc["wifiConnected"] = up;
+  doc["ssid"] = up ? WiFi.SSID() : String(config.wifi_ssid);
+  doc["bssid"] = up ? WiFi.BSSIDstr() : String("");
+  doc["rssi"] = up ? WiFi.RSSI() : 0;
   doc["channel"] = WiFi.channel();
-  doc["ip"] = (ap ? WiFi.softAPIP() : WiFi.localIP()).toString();
+  doc["ip"] = (up ? WiFi.localIP() : (apActive ? WiFi.softAPIP() : IPAddress())).toString();
   doc["gateway"] = WiFi.gatewayIP().toString();
   doc["subnet"] = WiFi.subnetMask().toString();
   doc["dns"] = WiFi.dnsIP().toString();
@@ -252,12 +250,19 @@ void getInfo() {
   time_t now = time(nullptr);
   char timeBuf[40] = "";
   strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M:%S %Z", ::localtime(&now));
-  doc["timeSynced"] = now > 1600000000;  // before NTP sync the clock reads ~1970
+  doc["timeSynced"] = timeSynced();
+  doc["ntpSyncCount"] = ntpSyncCount;
+  doc["ntpLastSyncAgoSec"] = ntpLastSync ? (long)(now - ntpLastSync) : -1;
   doc["localTime"] = timeBuf;
   doc["tzName"] = config.tzName;
   doc["tzValue"] = config.tzValue;
 
   doc["temperature"] = currentTemp;  // -1000 = no HA reading yet
+  doc["haConfigured"] = config.hassAT[0] && config.hassBaseUrl[0] && config.hassEntityId[0];
+  doc["haLastCode"] = haLastCode;
+  doc["haLastAttemptAgoSec"] = haLastAttemptMs ? (long)((millis() - haLastAttemptMs) / 1000) : -1;
+  doc["haLastOkAgoSec"] = haLastOkMs ? (long)((millis() - haLastOkMs) / 1000) : -1;
+  doc["haOk"] = haLastOkMs && haLastOkMs == haLastAttemptMs;
   doc["ldr"] = sensorValue;
 
   doc["uptimeSec"] = millis() / 1000;
@@ -265,6 +270,7 @@ void getInfo() {
   doc["cpuMHz"] = ESP.getCpuFreqMHz();
   doc["chipId"] = String(ESP.getChipId(), HEX);
   doc["freeHeap"] = ESP.getFreeHeap();
+  doc["minFreeHeap"] = minFreeHeap;
   doc["maxFreeBlock"] = ESP.getMaxFreeBlockSize();
   doc["heapFragmentation"] = ESP.getHeapFragmentation();
   doc["flashSize"] = ESP.getFlashChipRealSize();
@@ -273,7 +279,7 @@ void getInfo() {
   doc["freeSketchSpace"] = ESP.getFreeSketchSpace();
 
   FSInfo fs;
-  if (SPIFFS.info(fs)) {
+  if (LittleFS.info(fs)) {
     doc["fsTotal"] = fs.totalBytes;
     doc["fsUsed"] = fs.usedBytes;
   }

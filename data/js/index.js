@@ -22,7 +22,16 @@ $(document).ready(function () {
     toggleAutoBrightness();
   });
   getServerValues();
-  $('#deviceInfoBody').on('show.bs.collapse', getDeviceInfo);
+  let infoTimer = null;
+  $('#deviceInfoBody')
+    .on('show.bs.collapse', () => {
+      getDeviceInfo();
+      infoTimer = setInterval(() => { if (!document.hidden) getDeviceInfo(); }, 5000);
+    })
+    .on('hide.bs.collapse', () => {
+      clearInterval(infoTimer);
+      infoTimer = null;
+    });
 });
 
 function fmtBytes(n) {
@@ -35,6 +44,21 @@ function fmtUptime(s) {
   const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600),
     m = Math.floor(s % 3600 / 60), sec = s % 60;
   return `${d ? d + "d " : ""}${h}h ${m}m ${sec}s`;
+}
+
+function fmtAgo(s) {
+  return s < 0 ? "never" : `${fmtUptime(s)} ago`;
+}
+
+function fmtHa(i) {
+  if (!i.haConfigured) return "not configured";
+  if (i.haLastAttemptAgoSec < 0) return "not fetched yet";
+  if (i.haOk) return `OK, ${fmtAgo(i.haLastAttemptAgoSec)}`;
+  const why = i.haLastCode === -1 ? "connection error"
+    : i.haLastCode === -2 ? "non-numeric state"
+    : `HTTP ${i.haLastCode}`;
+  const lastOk = i.haLastOkAgoSec < 0 ? "never succeeded" : `last OK ${fmtAgo(i.haLastOkAgoSec)}`;
+  return `failed (${why}) ${fmtAgo(i.haLastAttemptAgoSec)}, ${lastOk}`;
 }
 
 function fmtRssi(r) {
@@ -54,7 +78,7 @@ function getDeviceInfo() {
       ["Network", [
         ["Mode", i.wifiMode + (i.wifiConnected ? "" : " (not connected)")],
         ["SSID", i.ssid],
-        ["Signal", i.wifiMode === "STA" ? fmtRssi(i.rssi) : "n/a"],
+        ["Signal", i.wifiConnected ? fmtRssi(i.rssi) : "n/a"],
         ["Channel", i.channel],
         ["BSSID", i.bssid],
         ["MAC", i.mac],
@@ -66,8 +90,10 @@ function getDeviceInfo() {
       ]],
       ["Time and sensors", [
         ["Clock time", i.localTime + (i.timeSynced ? "" : " (not synced)")],
+        ["Last NTP sync", i.ntpSyncCount ? `${fmtAgo(i.ntpLastSyncAgoSec)} (${i.ntpSyncCount} so far)` : "never"],
         ["Timezone", `${i.tzName} (${i.tzValue})`],
         ["Temperature", i.temperature === -1000 ? "no reading" : `${i.temperature}`],
+        ["Home Assistant", fmtHa(i)],
         ["Light sensor", i.ldr],
       ]],
       ["System", [
@@ -76,6 +102,7 @@ function getDeviceInfo() {
         ["Chip ID", i.chipId],
         ["CPU", `${i.cpuMHz} MHz`],
         ["Free heap", `${fmtBytes(i.freeHeap)} (largest block ${fmtBytes(i.maxFreeBlock)}, ${i.heapFragmentation}% fragmented)`],
+        ["Lowest free heap", fmtBytes(i.minFreeHeap)],
         ["Flash", `${fmtBytes(i.flashSize)} @ ${i.flashSpeed / 1000000} MHz`],
         ["Sketch", `${fmtBytes(i.sketchSize)} used, ${fmtBytes(i.freeSketchSpace)} free`],
         ["Filesystem", i.fsTotal ? `${fmtBytes(i.fsUsed)} of ${fmtBytes(i.fsTotal)} used` : "n/a"],

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "time_ops.h"  // timeSynced
 #include "vars.h"
 
 void initSound() {
@@ -23,6 +24,9 @@ void doubleBeep() {
 // loop(), independent of which screen is showing, so the chime still fires
 // when the temperature screen covers the top of the minute.
 void checkChime() {
+  if (!timeSynced()) {
+    return;  // unsynced RTC reads 1970; don't chime on a wrong hour
+  }
   auto now = ::time (nullptr);
   auto tm = ::localtime (&now);
   if (tm->tm_sec == 0 && beepDone == 0 && (tm->tm_min == 0 || tm->tm_min == 30)) {

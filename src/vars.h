@@ -10,7 +10,7 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.6.0"
+#define FW_VERSION "2.7.0"
 
 /*
  * Shared globals, grouped by concern. Everything here is defined once and
@@ -68,6 +68,15 @@ int beepDone = 0;                        // chime latch for checkChime()
 
 // ---- Sound ----------------------------------------------------------------
 int sensorValue = 0;  // last LDR reading (also used by handleBrightness)
+
+// ---- Status reported by /info ---------------------------------------------
+int haLastCode = 0;                 // last HA fetch: HTTP status, -1 transport error, -2 non-numeric state
+unsigned long haLastAttemptMs = 0;  // millis() of the last HA fetch (0 = never)
+unsigned long haLastOkMs = 0;       // millis() of the last fetch that returned a temperature
+volatile time_t ntpLastSync = 0;    // epoch of the last SNTP time update (0 = never)
+volatile uint32_t ntpSyncCount = 0;
+uint32_t minFreeHeap = 0xFFFFFFFF;  // lowest free heap seen since boot
+bool apActive = false;              // setup AP is up (WiFi not connected)
 
 // ---- Network services ------------------------------------------------------
 ESP8266WebServer server(80);

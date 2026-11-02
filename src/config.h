@@ -31,9 +31,6 @@ void initDefaultConfig() {
 const uint32_t CFG_MAGIC = 0xC10C0CF6;
 const size_t CFG_HEADER = 12;
 const size_t CFG_MAX = 2000;
-const char *const LEGACY_CONFIG_FILE = "/config.json";
-
-bool saveConfig();
 
 uint32_t configCrc32(const char *data, size_t len) {
   uint32_t crc = 0xFFFFFFFF;
@@ -60,6 +57,20 @@ bool readEepromConfig(String &json) {
   return configCrc32(json.c_str(), len) == crc;
 }
 
+void loadString(char *dst, size_t size, JsonVariantConst v) {
+  const char *s = v.as<const char *>();
+  if (s) {
+    strlcpy(dst, s, size);
+  }
+}
+
+void loadColor(RgbColor &c, JsonVariantConst v) {
+  c = RgbColor((v["r"] | (int)c.R) & 0xFF, (v["g"] | (int)c.G) & 0xFF, (v["b"] | (int)c.B) & 0xFF);
+}
+
+// Applies the saved JSON on top of the defaults, so a key that is missing
+// (older firmware, new setting) or invalid keeps its default instead of
+// becoming 0. Leaves config untouched when the JSON doesn't parse.
 bool applyConfigJson(const char *json) {
   DynamicJsonDocument doc(2048);
   auto error = deserializeJson(doc, json);
@@ -68,24 +79,23 @@ bool applyConfigJson(const char *json) {
     return false;
   }
 
-  config.brightness = doc["brightness"];
-  config.autoBrightness = doc["autoBrightness"];
+  initDefaultConfig();
 
-  config.clock_color = RgbColor(doc["clock_color"]["r"], doc["clock_color"]["g"], doc["clock_color"]["b"]);
-  config.temp_color = RgbColor(doc["temp_color"]["r"], doc["temp_color"]["g"], doc["temp_color"]["b"]);
-  config.other_color = RgbColor(doc["other_color"]["r"], doc["other_color"]["g"], doc["other_color"]["b"]);
+  config.brightness = constrain(doc["brightness"] | (int)config.brightness, 0, 255);
+  config.autoBrightness = doc["autoBrightness"] | config.autoBrightness;
+  loadColor(config.clock_color, doc["clock_color"]);
+  loadColor(config.temp_color, doc["temp_color"]);
+  loadColor(config.other_color, doc["other_color"]);
 
-  config.hourFormat = doc["hourFormat"];
-  // default for configs saved before displayStyle existed
-  config.displayStyle = doc["displayStyle"] | 1;
-  strlcpy(config.hassBaseUrl, doc["hassConfig"]["hassBaseUrl"], sizeof(config.hassBaseUrl));
-  strlcpy(config.hassEntityId, doc["hassConfig"]["hassEntityId"], sizeof(config.hassEntityId));
-  strlcpy(config.hassAT, doc["hassConfig"]["hassAT"], sizeof(config.hassAT));
-  strlcpy(config.wifi_ssid, doc["wifi_ssid"], sizeof(config.wifi_ssid));
-  strlcpy(config.wifi_password, doc["wifi_password"], sizeof(config.wifi_password));
-
-  strlcpy(config.tzName, doc["tzName"], sizeof(config.tzName));
-  strlcpy(config.tzValue, doc["tzValue"], sizeof(config.tzValue));
+  config.hourFormat = (doc["hourFormat"] | 12) == 24 ? 24 : 12;
+  config.displayStyle = (doc["displayStyle"] | 1) == 2 ? 2 : 1;
+  loadString(config.hassBaseUrl, sizeof(config.hassBaseUrl), doc["hassConfig"]["hassBaseUrl"]);
+  loadString(config.hassEntityId, sizeof(config.hassEntityId), doc["hassConfig"]["hassEntityId"]);
+  loadString(config.hassAT, sizeof(config.hassAT), doc["hassConfig"]["hassAT"]);
+  loadString(config.wifi_ssid, sizeof(config.wifi_ssid), doc["wifi_ssid"]);
+  loadString(config.wifi_password, sizeof(config.wifi_password), doc["wifi_password"]);
+  loadString(config.tzName, sizeof(config.tzName), doc["tzName"]);
+  loadString(config.tzValue, sizeof(config.tzValue), doc["tzValue"]);
 
   char buffer[1024];
   serializeJson(doc, buffer);
@@ -93,41 +103,14 @@ bool applyConfigJson(const char *json) {
   return true;
 }
 
-// One-time import of the pre-EEPROM /config.json. The file is removed only
-// after the EEPROM commit succeeds, so a failed migration can be retried.
-bool migrateLegacyConfig() {
-  if (!SPIFFS.exists(LEGACY_CONFIG_FILE)) {
-    return false;
-  }
-  File f = SPIFFS.open(LEGACY_CONFIG_FILE, "r");
-  if (!f || f.size() == 0 || f.size() > CFG_MAX) {
-    Log.errorln("Legacy config unreadable or too large");
-    return false;
-  }
-  String json = f.readString();
-  f.close();
-  if (!applyConfigJson(json.c_str())) {
-    return false;
-  }
-  if (saveConfig()) {
-    SPIFFS.remove(LEGACY_CONFIG_FILE);
-    Log.noticeln("Migrated config.json to EEPROM");
-  }
-  return true;
-}
-
 bool loadConfig() {
   EEPROM.begin(4096);
-  config.wifiMacString = WiFi.macAddress();
   String json;
-  if (readEepromConfig(json)) {
-    return applyConfigJson(json.c_str());
+  if (!readEepromConfig(json)) {
+    Log.errorln("No saved config");
+    return false;
   }
-  if (migrateLegacyConfig()) {
-    return true;
-  }
-  Log.errorln("No saved config");
-  return false;
+  return applyConfigJson(json.c_str());
 }
 
 // Placeholder the API returns instead of the wifi password and HA token. The

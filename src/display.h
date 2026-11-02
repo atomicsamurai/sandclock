@@ -74,6 +74,19 @@ void showTime() {
   dotsOn = !dotsOn;
 }
 
+// Shown until the first NTP sync so a wrong (1970) time is never displayed.
+// Same layout as showTime(): four minus glyphs around the blinking colon.
+void showNoTime() {
+  const auto &font = clock_font ("UserBold");
+  const int dMinus = 11; // MINUS glyph index in the UserBold font
+  printAt (1, 0, dMinus, font, config.clock_color);
+  printAt (8, 0, dMinus, font, config.clock_color);
+  printAt (15, 0, COLON, font, dotsOn ? config.clock_color : color_black);
+  printAt (18, 0, dMinus, font, config.clock_color);
+  printAt (25, 0, dMinus, font, config.clock_color);
+  dotsOn = !dotsOn;
+}
+
 void showTemperature() {
   if (millis() - prevTimeTemperature >= 60000) { // refresh from HA every minute
     prevTimeTemperature = millis();
