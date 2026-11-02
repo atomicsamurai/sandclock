@@ -12,6 +12,9 @@ void initDefaultConfig() {
   config.other_color = RgbColor(255, 0, 0);
   config.hourFormat = 12;
   config.displayStyle = 1;  // default: 5s/2s cycle
+  config.chimeEnabled = true;
+  config.chimeMuteDark = false;
+  config.chimeDarkThreshold = 40;
   config.wifiMacString = WiFi.macAddress();
   strcpy(config.tzName, "Etc/UTC");
   strcpy(config.tzValue, "UTC0");
@@ -90,6 +93,9 @@ bool applyConfigJson(const char *json) {
 
   config.hourFormat = (doc["hourFormat"] | 12) == 24 ? 24 : 12;
   config.displayStyle = (doc["displayStyle"] | 1) == 2 ? 2 : 1;
+  config.chimeEnabled = doc["chimeEnabled"] | config.chimeEnabled;
+  config.chimeMuteDark = doc["chimeMuteDark"] | config.chimeMuteDark;
+  config.chimeDarkThreshold = constrain(doc["chimeDarkThreshold"] | (int)config.chimeDarkThreshold, 0, 1023);
   loadString(config.hassBaseUrl, sizeof(config.hassBaseUrl), doc["hassConfig"]["hassBaseUrl"]);
   loadString(config.hassEntityId, sizeof(config.hassEntityId), doc["hassConfig"]["hassEntityId"]);
   loadString(config.hassAT, sizeof(config.hassAT), doc["hassConfig"]["hassAT"]);
@@ -138,6 +144,9 @@ DynamicJsonDocument getConfigDoc(bool redact = false) {
 
   doc["hourFormat"] = config.hourFormat;
   doc["displayStyle"] = config.displayStyle;
+  doc["chimeEnabled"] = config.chimeEnabled;
+  doc["chimeMuteDark"] = config.chimeMuteDark;
+  doc["chimeDarkThreshold"] = config.chimeDarkThreshold;
   doc["fwVersion"] = FW_VERSION;
   doc["hassConfig"]["hassBaseUrl"] = config.hassBaseUrl;
   doc["hassConfig"]["hassEntityId"] = config.hassEntityId;

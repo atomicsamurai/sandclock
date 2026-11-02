@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ha_parse.h"
 #include "vars.h"
 
 bool hassConfigured() {
@@ -37,18 +38,7 @@ long getTemperatureFromHA() {
       Log.traceln("[HTTP] GET... code: %d", httpCode);
 
       if (httpCode == HTTP_CODE_OK) {
-        // HA's reply carries every attribute; keep only "state" so a large
-        // sensor entity can't overflow the document.
-        StaticJsonDocument<64> filter;
-        filter["state"] = true;
-        StaticJsonDocument<128> doc;
-        DeserializationError err = deserializeJson(doc, http.getString(), DeserializationOption::Filter(filter));
-        const char *tempString = err ? nullptr : doc["state"].as<const char *>();
-        char *end = nullptr;
-        // "unavailable"/"unknown" must not parse as 0 degrees
-        long v = tempString ? strtol(tempString, &end, 10) : 0;
-        if (tempString && end != tempString) {
-          temp = v;
+        if (parseHaTemperature(http.getString(), temp)) {
           haLastOkMs = haLastAttemptMs;
         } else {
           haLastCode = -2;

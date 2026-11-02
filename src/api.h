@@ -186,6 +186,30 @@ void setDisplayStyle() {
   getConfig();
 }
 
+void setChime() {
+  bool any = server.hasArg("chimeEnabled") || server.hasArg("chimeMuteDark") || server.hasArg("chimeDarkThreshold");
+  if (!any) {
+    server.send(400, "text/plain", "400: Invalid Request");
+    return;
+  }
+  if (server.hasArg("chimeDarkThreshold")) {
+    long t = server.arg("chimeDarkThreshold").toInt();
+    if (t < 0 || t > 1023) {
+      server.send(400, "text/plain", "400: chimeDarkThreshold must be 0-1023");
+      return;
+    }
+    config.chimeDarkThreshold = t;
+  }
+  if (server.hasArg("chimeEnabled")) {
+    config.chimeEnabled = server.arg("chimeEnabled") == "true";
+  }
+  if (server.hasArg("chimeMuteDark")) {
+    config.chimeMuteDark = server.arg("chimeMuteDark") == "true";
+  }
+  saveConfig();
+  getConfig();
+}
+
 void reboot() {
   server.send(200, F("text/html"), R""(
 <!DOCTYPE html>
@@ -329,6 +353,9 @@ void getInfo() {
   doc["haLastOkAgoSec"] = haLastOkMs ? (long)((millis() - haLastOkMs) / 1000) : -1;
   doc["haOk"] = haLastOkMs && haLastOkMs == haLastAttemptMs;
   doc["ldr"] = sensorValue;
+  doc["lightLevel"] = lightLevel;
+  doc["buzzerMuted"] = buzzerMutedByDark();
+  doc["chimeEnabled"] = config.chimeEnabled;
 
   doc["uptimeSec"] = millis() / 1000;
   doc["resetReason"] = ESP.getResetReason();
@@ -367,6 +394,7 @@ void setupHandlers() {
   server.on("/config/autobrightness", HTTP_POST, secured(toggleAutoBrightness));
   server.on("/config/hourformat", HTTP_POST, secured(setHourFormat));
   server.on("/config/displaystyle", HTTP_POST, secured(setDisplayStyle));
+  server.on("/config/chime", HTTP_POST, secured(setChime));
   server.on("/config/wifiConfig", HTTP_POST, secured(updateWifiConfig));
   server.on("/config/auth", HTTP_POST, secured(setAuth));
   server.on("/config/timezones", HTTP_POST, secured(setTimezone));

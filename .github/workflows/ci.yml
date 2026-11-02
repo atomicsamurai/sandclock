@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tools/git_rev.py embeds `git describe`
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .pio/libdeps
+          key: pio-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Placeholder secrets (the real file is gitignored)
+        run: cp src/secrets.h.example src/secrets.h
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Build filesystem image
+        run: pio run -t buildfs
+
+      - name: Host tests
+        run: tests/run.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: images
+          path: |
+            .pio/build/d1_mini/firmware.bin
+            .pio/build/d1_mini/littlefs.bin

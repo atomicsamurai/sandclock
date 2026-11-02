@@ -60,6 +60,7 @@
         <div class="card">
           <div class="card-body">
             <div class="form-group">
+              <label class="d-block" for="clock_color">Clock color</label>
               <input type="text" id="clock_color" class="form-control demo" data-inline="true" value="#ff0000">
               <div class="small text-monospace text-muted mt-2" id="clock_color_val"></div>
             </div>
@@ -69,6 +70,7 @@
         <div class="card">
           <div class="card-body">
             <div class="form-group">
+              <label class="d-block" for="temp_color">Temperature color</label>
               <input type="text" id="temp_color" class="form-control demo" data-inline="true" value="#ff0000">
               <div class="small text-monospace text-muted mt-2" id="temp_color_val"></div>
             </div>
@@ -78,10 +80,11 @@
         <div class="card">
           <div class="card-body">
             <div class="form-group">
+              <label class="d-block" for="other_color">Message color (scrolling text)</label>
               <input type="text" id="other_color" class="form-control demo" data-inline="true" value="#ff0000">
               <div class="small text-monospace text-muted mt-2" id="other_color_val"></div>
             </div>
-            <button type="button" class="btn btn-primary" onclick="setOtherColor()">Set other color</button>
+            <button type="button" class="btn btn-primary" onclick="setOtherColor()">Set message color</button>
           </div>
         </div>
       </div>
@@ -597,6 +600,28 @@
             <button type="button" class="btn btn-primary" onclick="updateTzOffset()">Update Timezone Offset</button>
           </div>
         </div>  
+      </div>
+      <br />
+      <div class="card">
+        <div class="card-body">
+          <div class="form-group">
+            <label>Buzzer</label>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="chimeEnabled">
+              <label class="form-check-label" for="chimeEnabled">Chime on the hour and half hour</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="chimeMuteDark">
+              <label class="form-check-label" for="chimeMuteDark">Mute the buzzer when it is dark (chime and message beeps)</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="chimeDarkThreshold">Dark below (light sensor, 0-1023)</label>
+            <input type="number" min="0" max="1023" id="chimeDarkThreshold" class="form-control" style="max-width: 10rem">
+            <small id="lightNow" class="form-text text-muted"></small>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="updateChime()">Update Buzzer Settings</button>
+        </div>
       </div>
       <br />
       <div class="card">

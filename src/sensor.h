@@ -8,8 +8,10 @@
  */
 
 void handleBrightness() {
+  // Always sampled: the buzzer's dark-mute needs it even with manual brightness.
+  sensorValue = analogRead(sensorPin);
+  lightLevel = lightLevel < 0 ? sensorValue : (lightLevel * 3 + sensorValue) / 4;
   if (config.autoBrightness) {
-    sensorValue = analogRead(sensorPin);
     // sensorValue varies from 0 to 1023
     // brightness should be from 15 (min) to 255
     config.brightness = (sensorValue * 215 / 1023) + 15;

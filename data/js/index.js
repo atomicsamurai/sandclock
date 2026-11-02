@@ -14,6 +14,9 @@ $(document).ready(function () {
     toggleAutoBrightness();
   });
   getServerValues();
+  refreshLight();
+  setInterval(() => { if (!document.hidden) refreshLight(); }, 5000);
+  $('#chimeDarkThreshold').on('input', showLight);
   let infoTimer = null;
   $('#deviceInfoBody')
     .on('show.bs.collapse', () => {
@@ -103,7 +106,8 @@ function getDeviceInfo() {
         ["Timezone", `${i.tzName} (${i.tzValue})`],
         ["Temperature", i.temperature === -1000 ? "no reading" : `${i.temperature}`],
         ["Home Assistant", fmtHa(i)],
-        ["Light sensor", i.ldr],
+        ["Light sensor", `${i.ldr} (average ${i.lightLevel})`],
+        ["Buzzer", !i.chimeEnabled ? "chime off" : i.buzzerMuted ? "muted (dark)" : "on"],
       ]],
       ["System", [
         ["Uptime", fmtUptime(i.uptimeSec)],
@@ -150,6 +154,10 @@ function getServerValues() {
     rangeB.value = data.brightness;
     $('#hourFormat').val("" + data.hourFormat);
     $('#displayStyle').val("" + data.displayStyle);
+    $('#chimeEnabled').prop("checked", data.chimeEnabled);
+    $('#chimeMuteDark').prop("checked", data.chimeMuteDark);
+    $('#chimeDarkThreshold').val(data.chimeDarkThreshold);
+    showLight();
     if (window.ClockPreview) ClockPreview.update();
     $('#autoBrightness').prop("checked", data.autoBrightness);
     if (data.autoBrightness) {
@@ -258,6 +266,40 @@ function setBrightness() {
 function updateHourFormat() {
   postSettings("/config/hourformat", {
     hourFormat: $('#hourFormat').val()
+  });
+}
+
+// Live light reading next to the dark threshold, so the threshold can be
+// tuned against what the sensor actually reads in the dark and in daylight.
+let lastLight = null;
+
+function refreshLight() {
+  $.get("/info", i => {
+    lastLight = i.lightLevel;
+    showLight();
+  });
+}
+
+function showLight() {
+  if (lastLight === null || lastLight < 0) {
+    $('#lightNow').text("Light sensor: waiting for a reading...");
+    return;
+  }
+  const t = parseInt($('#chimeDarkThreshold').val(), 10);
+  const verdict = isNaN(t) ? "" : lastLight < t ? " (dark)" : " (bright)";
+  $('#lightNow').text(`Light sensor right now: ${lastLight}${verdict}. Lower = darker.`);
+}
+
+function updateChime() {
+  const t = parseInt($('#chimeDarkThreshold').val(), 10);
+  if (isNaN(t) || t < 0 || t > 1023) {
+    alert("Dark threshold must be a number from 0 to 1023.");
+    return;
+  }
+  postSettings("/config/chime", {
+    chimeEnabled: $('#chimeEnabled').prop('checked'),
+    chimeMuteDark: $('#chimeMuteDark').prop('checked'),
+    chimeDarkThreshold: t
   });
 }
 

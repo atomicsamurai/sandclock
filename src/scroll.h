@@ -71,7 +71,6 @@ int getCharIndex(char c) {
 }
 
 bool scrollActive = false;
-RgbColor scrollColor (255, 60, 0);  // the base's scroll color
 
 void renderScrollFrame(int pos) {
   strip.ClearTo(color_black);
@@ -92,7 +91,7 @@ void renderScrollFrame(int pos) {
       for (uint8_t row = 0; row < 7; row++) {
         if (columnData & (1 << row)) {
           uint16_t pixelIndex = topo.Map(pixelX, row);
-          strip.SetPixelColor(pixelIndex, scrollColor);
+          strip.SetPixelColor(pixelIndex, config.other_color);
         }
       }
     }
@@ -124,7 +123,9 @@ void tickScroll() {
       strip.ClearTo(color_black);
       strip.Show();
       prevTime = 0;  // redraw the clock immediately instead of waiting a second
-      doubleBeep();  // the base's end-of-scroll signal
+      if (!buzzerMutedByDark()) {
+        doubleBeep();  // the base's end-of-scroll signal
+      }
       return;
     }
     scrollPos = PanelWidth;  // start the next pass
@@ -138,5 +139,7 @@ void beginMessageScroll() {
   passesLeft = messageRepeatCount > 0 ? messageRepeatCount : 1;
   scrollLastStep = 0;                              // render first frame now
   scrollActive = true;
-  doubleBeep();  // the base's start-of-scroll signal
+  if (!buzzerMutedByDark()) {
+    doubleBeep();  // the base's start-of-scroll signal
+  }
 }

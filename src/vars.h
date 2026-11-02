@@ -10,7 +10,7 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.9.0"
+#define FW_VERSION "2.10.0"
 
 // Set at build time by tools/git_rev.py (git describe), so /info shows exactly
 // which commit is running.
@@ -34,6 +34,9 @@ struct ConfigObject {
   byte brightness;
   byte hourFormat;
   byte displayStyle;  // 1 = cycle time/temp (5s/2s), 2 = combined on one screen
+  bool chimeEnabled;         // hourly/half-hourly chime
+  bool chimeMuteDark;        // silence automatic beeps (chime, message start/end) when dark
+  uint16_t chimeDarkThreshold;  // smoothed light reading (0-1023) below which it is "dark"
   char hassBaseUrl[100];
   char hassEntityId[128];
   char hassAT[512];
@@ -76,6 +79,7 @@ int beepDone = 0;                        // chime latch for checkChime()
 
 // ---- Sound ----------------------------------------------------------------
 int sensorValue = 0;  // last LDR reading (also used by handleBrightness)
+int lightLevel = -1;  // LDR reading smoothed over ~20s; -1 until the first sample
 
 // ---- Status reported by /info ---------------------------------------------
 int haLastCode = 0;                 // last HA fetch: HTTP status, -1 transport error, -2 non-numeric state
