@@ -61,6 +61,7 @@
           <div class="card-body">
             <div class="form-group">
               <input type="text" id="clock_color" class="form-control demo" data-inline="true" value="#ff0000">
+              <div class="small text-monospace text-muted mt-2" id="clock_color_val"></div>
             </div>
             <button type="button" class="btn btn-primary" onclick="setClockColor()">Set clock color</button>
           </div>
@@ -69,6 +70,7 @@
           <div class="card-body">
             <div class="form-group">
               <input type="text" id="temp_color" class="form-control demo" data-inline="true" value="#ff0000">
+              <div class="small text-monospace text-muted mt-2" id="temp_color_val"></div>
             </div>
             <button type="button" class="btn btn-primary" onclick="setTempColor()">Set temp color</button>
           </div>
@@ -77,6 +79,7 @@
           <div class="card-body">
             <div class="form-group">
               <input type="text" id="other_color" class="form-control demo" data-inline="true" value="#ff0000">
+              <div class="small text-monospace text-muted mt-2" id="other_color_val"></div>
             </div>
             <button type="button" class="btn btn-primary" onclick="setOtherColor()">Set other color</button>
           </div>
@@ -120,6 +123,7 @@
                 <option value="2">Combined: time and temp</option>
               </select>
             </div>
+            <div id="stylePreview" class="mb-3"></div>
             <button type="button" class="btn btn-primary" onclick="updateDisplayStyle()">Update Display Style</button>
           </div>
         </div>
@@ -708,6 +712,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-minicolors/2.3.6/jquery.minicolors.min.js"
     integrity="sha512-vBqPkpOdZM0O7YezzE8xaoUdyt4Z2d+gLrY0AMvmNPLdLuNzvreTopyuaM9/FiRzHs1bwWzYDJgH6STcuNXpqg=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script type="text/javascript" src="js/fonts.js"></script>
+  <script type="text/javascript" src="js/preview.js"></script>
   <script type="text/javascript" src="js/index.js"></script>
 
 </body>

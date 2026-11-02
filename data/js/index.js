@@ -1,23 +1,15 @@
 $(document).ready(function () {
 
-  if ($('#clock_color').length) {
-    $('#clock_color').minicolors({
-      inline: $('#clock_color').attr('data-inline') === 'true',
-      theme: 'bootstrap'
-    });
-  }
-  if ($('#temp_color').length) {
-    $('#temp_color').minicolors({
-      inline: $('#temp_color').attr('data-inline') === 'true',
-      theme: 'bootstrap'
-    });
-  }
-  if ($('#other_color').length) {
-    $('#other_color').minicolors({
-      inline: $('#other_color').attr('data-inline') === 'true',
-      theme: 'bootstrap'
-    });
-  }
+  ['clock_color', 'temp_color', 'other_color'].forEach(id => {
+    const $el = $('#' + id);
+    if ($el.length) {
+      $el.minicolors({
+        inline: $el.attr('data-inline') === 'true',
+        theme: 'bootstrap',
+        change: () => refreshColorViews(id)
+      });
+    }
+  });
   $('#autoBrightness').change(() => {
     toggleAutoBrightness();
   });
@@ -33,6 +25,22 @@ $(document).ready(function () {
       infoTimer = null;
     });
 });
+
+// minicolors' value setter takes a color string; it ignores {r,g,b} objects.
+function rgbToHex(c) {
+  return '#' + [c.r, c.g, c.b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+// Show a picker's value as text ("#rrggbb  rgb(r, g, b)") and redraw the
+// Display Style preview, which uses the picker colors.
+function refreshColorViews(id) {
+  const ids = id ? [id] : ['clock_color', 'temp_color', 'other_color'];
+  ids.forEach(cid => {
+    const c = $('#' + cid).minicolors('rgbObject');
+    $('#' + cid + '_val').text(`${rgbToHex(c)}  rgb(${c.r}, ${c.g}, ${c.b})`);
+  });
+  if (window.ClockPreview) ClockPreview.update();
+}
 
 function fmtBytes(n) {
   if (n >= 1048576) return `${(n / 1048576).toFixed(2)} MB`;
@@ -134,13 +142,15 @@ function getServerValues() {
       : "Password protection is off: anyone on your network can change settings.");
     $('#wifi_ssid').val(data.wifi_ssid);
     $('#wifi_password').val(data.wifi_password);
-    $('#clock_color').minicolors('value', data.clock_color);
-    $('#temp_color').minicolors('value', data.temp_color);
-    $('#other_color').minicolors('value', data.other_color);
+    $('#clock_color').minicolors('value', rgbToHex(data.clock_color));
+    $('#temp_color').minicolors('value', rgbToHex(data.temp_color));
+    $('#other_color').minicolors('value', rgbToHex(data.other_color));
+    refreshColorViews();
     let rangeB = document.getElementById("rangeBrightness");
     rangeB.value = data.brightness;
     $('#hourFormat').val("" + data.hourFormat);
     $('#displayStyle').val("" + data.displayStyle);
+    if (window.ClockPreview) ClockPreview.update();
     $('#autoBrightness').prop("checked", data.autoBrightness);
     if (data.autoBrightness) {
       $('#rangeBrightness').prop("disabled", true);
