@@ -29,4 +29,9 @@ BIN="$(mktemp -d)/ha_parse_test"
 ${CXX:-c++} -std=c++17 -I"$AJ" tests/ha_parse_test.cpp -o "$BIN"
 "$BIN"
 
+step "Safe mode decision logic (src/safe_mode_logic.h)"
+BIN2="$(mktemp -d)/safe_mode_test"
+${CXX:-c++} -std=c++17 tests/safe_mode_test.cpp -o "$BIN2"
+"$BIN2"
+
 printf '\nall checks passed\n'

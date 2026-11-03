@@ -126,8 +126,12 @@
                 <option value="2">Combined: time and temp</option>
               </select>
             </div>
-            <div id="stylePreview" class="mb-3"></div>
-            <button type="button" class="btn btn-primary" onclick="updateDisplayStyle()">Update Display Style</button>
+            <a class="d-block mb-2" data-toggle="collapse" href="#stylePreviewBody" role="button"
+              aria-expanded="true" aria-controls="stylePreviewBody">Preview <small class="text-muted">(show/hide)</small></a>
+            <div class="collapse show" id="stylePreviewBody">
+              <div id="stylePreview" class="mb-3"></div>
+              <button type="button" class="btn btn-primary" onclick="updateDisplayStyle()">Update Display Style</button>
+            </div>
           </div>
         </div>
         <div class="card">
@@ -700,6 +704,13 @@
             <small id="authStatus" class="form-text text-muted"></small>
           </div>
           <button type="button" class="btn btn-primary" onclick="setAuthPassword()">Set Password</button>
+          <hr>
+          <div class="form-group">
+            <label>Setup access point</label>
+            <div class="small text-muted">If the clock cannot join WiFi it opens the network <code>SandClock</code> (WPA2). While nobody has joined, its password also scrolls across the clock.</div>
+            <div class="mt-2">Password: <code id="apPassword"></code></div>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="regenApPassword()">Generate New Setup Password</button>
         </div>
       </div>
       <br />

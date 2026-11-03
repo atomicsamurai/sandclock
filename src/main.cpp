@@ -47,11 +47,41 @@ bool wifiWasUp = false;
 unsigned long wifiDownSinceMs = 0;
 unsigned long lastWifiAttemptMs = 0;
 
+// The ESP8266 has one radio: while the station is trying to associate, it hops
+// channels and the setup AP becomes unreachable (association squeaks through,
+// transfers do not). While someone is joined to the AP, station retries are
+// paused so the config page actually works, and resume after they leave.
+const unsigned long AP_CLIENT_GRACE_MS = 10000;
+bool staPaused = false;
+unsigned long lastApClientMs = 0;
+
+void resumeStation(unsigned long now) {
+  staPaused = false;
+  WiFi.setAutoReconnect (true);
+  if (config.wifi_ssid[0]) {
+    WiFi.begin (config.wifi_ssid, config.wifi_password);
+  }
+  lastWifiAttemptMs = now;
+  Log.noticeln("Station retries resumed");
+}
+
+bool mdnsStarted = false;
+
+void ensureMdns() {
+  if (!mdnsStarted) {
+    mdnsStarted = MDNS.begin ("sandclock");
+  }
+}
+
 void startAp() {
+  if (strlen (config.apPassword) < 8) {
+    generateApPassword ();  // first time the AP is needed
+  }
   WiFi.mode (WIFI_AP_STA);
   WiFi.softAPConfig (APIP, APIP, IPAddress (255, 255, 255, 0));
-  WiFi.softAP (F("SandClock"));
+  WiFi.softAP ("SandClock", config.apPassword);
   dnsServer.start (53, "*", APIP);
+  ensureMdns ();  // so phones on the AP can resolve sandclock.local
   apActive = true;
   Log.warningln("WiFi not connected: setup AP 'SandClock' is up, still retrying '%s'", config.wifi_ssid);
 }
@@ -66,8 +96,14 @@ void stopAp() {
 
 void onWifiConnected() {
   Log.noticeln("WiFi connected, IP: %p", WiFi.localIP());
-  MDNS.begin ("sandclock");
-  applyTimezone();  // (re)starts SNTP, so time resyncs after an outage
+  if (mdnsStarted) {  // began on the setup AP; re-probe with the station's IP
+    MDNS.end ();
+    mdnsStarted = false;
+  }
+  ensureMdns ();
+  if (!safeMode) {
+    applyTimezone();  // (re)starts SNTP, so time resyncs after an outage
+  }
 }
 
 // Called every loop(): detects connect/disconnect transitions, retries the
@@ -75,6 +111,22 @@ void onWifiConnected() {
 void maintainWifi() {
   unsigned long now = millis();
   bool up = WiFi.status() == WL_CONNECTED;
+  if (up) {
+    if (staPaused) {  // connected again: paused retries are no longer needed
+      staPaused = false;
+      WiFi.setAutoReconnect (true);
+    }
+  } else if (WiFi.softAPgetStationNum() > 0) {
+    lastApClientMs = now;
+    if (apActive && !staPaused) {
+      staPaused = true;
+      WiFi.setAutoReconnect(false);
+      WiFi.disconnect(false);  // stop association attempts; credentials kept
+      Log.noticeln("AP client joined: station retries paused so the config page works");
+    }
+  } else if (staPaused && (!apActive || now - lastApClientMs >= AP_CLIENT_GRACE_MS)) {
+    resumeStation (now);  // AP idle long enough (or gone): try the station again
+  }
   if (up) {
     if (!wifiWasUp) {
       if (apActive) {
@@ -94,23 +146,93 @@ void maintainWifi() {
   if (!apActive && now - wifiDownSinceMs >= WIFI_AP_AFTER_MS) {
     startAp();
   }
-  if (now - lastWifiAttemptMs >= WIFI_RETRY_MS && config.wifi_ssid[0]) {
+  if (!staPaused && now - lastWifiAttemptMs >= WIFI_RETRY_MS && config.wifi_ssid[0]) {
     lastWifiAttemptMs = now;
     Log.traceln("Retrying WiFi: %s", config.wifi_ssid);
     WiFi.begin (config.wifi_ssid, config.wifi_password);
   }
 }
 
+// While the setup AP waits for a first visitor, scroll its name and password
+// across the matrix so whoever is standing at the clock can join.
+const unsigned long AP_ANNOUNCE_MS = 60000;
+unsigned long lastApAnnounceMs = 0;
+
+void announceApPassword() {
+  if (safeMode || !apActive || scrollActive || showingMessage != 0 || WiFi.softAPgetStationNum () > 0) {
+    return;
+  }
+  unsigned long now = millis ();
+  if (lastApAnnounceMs != 0 && now - lastApAnnounceMs < AP_ANNOUNCE_MS) {
+    return;
+  }
+  lastApAnnounceMs = now ? now : 1;
+  snprintf (messageText, sizeof (messageText), "AP PW %s", config.apPassword);
+  messageScrollDelayMs = 150;  // slow: the password has to be read off the LEDs
+  messageRepeatCount = 1;
+  scrollQuiet = true;
+  showingMessage = 1;  // loop() starts the scroll
+}
+
+// Safe mode (see safe_mode.h): WiFi, a status page and OTA only. The matrix is
+// left alone, since the display code may be what keeps crashing; the board's
+// LED blinks fast instead.
+void setupSafeMode() {
+  Log.errorln ("SAFE MODE: %d crashed starts in a row (%s); only WiFi and OTA are running",
+               (int)crashCount, ESP.getResetInfo ().c_str ());
+  pinMode (LED_BUILTIN, OUTPUT);
+  if (!loadConfig ()) {
+    initDefaultConfig ();
+  }
+  WiFi.mode (WIFI_STA);
+  WiFi.persistent (false);
+  if (strlen (config.wifi_ssid) > 0) {
+    WiFi.begin (config.wifi_ssid, config.wifi_password);
+  }
+  auto timeout = millis () + WIFI_BOOT_WAIT_MS;
+  while (WiFi.status () != WL_CONNECTED && millis () < timeout) {
+    digitalWrite (LED_BUILTIN, (millis () / 150) % 2);
+    delay (20);
+  }
+  if (WiFi.status () == WL_CONNECTED) {
+    onWifiConnected ();
+    wifiWasUp = true;
+  } else {
+    wifiDownSinceMs = millis ();
+    lastWifiAttemptMs = millis ();
+    startAp ();
+  }
+  httpUpdateServer.setup (&server, "/update", AUTH_USER, config.authPassword);
+  setupSafeHandlers ();
+  server.begin ();
+}
+
+void safeLoop() {
+  server.handleClient ();
+  maintainWifi ();
+  if (WiFi.status () == WL_CONNECTED || apActive) {
+    MDNS.update ();
+  }
+  if (apActive) {
+    dnsServer.processNextRequest ();
+  }
+  digitalWrite (LED_BUILTIN, (millis () / 150) % 2);
+}
+
 void setup() {
   Serial.begin(115200);
   while (!Serial);
+  Log.begin(LOG_LEVEL_VERBOSE, &Serial);
+
+  if (safeModeBoot ()) {
+    setupSafeMode ();
+    return;
+  }
 
   initSound();
 
   strip.Begin();
   clearDisplay();
-
-  Log.begin(LOG_LEVEL_VERBOSE, &Serial);
 
   LittleFS.begin();
   if (!loadConfig()) {
@@ -168,6 +290,11 @@ void setup() {
 }
 
 void loop() {
+  if (safeMode) {
+    safeLoop ();
+    return;
+  }
+  markStableIfDue ();
   unsigned long currentMillis = millis();
   uint32_t freeHeap = ESP.getFreeHeap();
   if (freeHeap < minFreeHeap) {
@@ -178,6 +305,7 @@ void loop() {
     ESP.restart();
   }
   maintainWifi();
+  announceApPassword();
   if (currentMillis - prevTimeBrightness >= 5000) { // every 5 secs
     prevTimeBrightness = currentMillis;
     handleBrightness();
@@ -187,6 +315,7 @@ void loop() {
     beginMessageScroll();
   }
   tickScroll();
+  rebootIfOffline();
   bool online = WiFi.status() == WL_CONNECTED;
   // The RTC keeps time through a WiFi drop, so keep showing it; the logo is
   // only for "no WiFi and no time yet".
@@ -221,11 +350,11 @@ void loop() {
       }
       strip.Show();
     }
-  } else {
+  } else if (!scrollActive) {  // (a running scroll owns the matrix)
       wifi_logo (RgbColor (0x80, 0x80, 30));
       delay (15);
   }
-  if (online) {
+  if (online || apActive) {  // mDNS must answer on the setup AP too
     MDNS.update ();
   }
   if (apActive) {

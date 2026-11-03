@@ -71,6 +71,7 @@ int getCharIndex(char c) {
 }
 
 bool scrollActive = false;
+bool scrollSilent = false;  // the running scroll was started with scrollQuiet
 
 void renderScrollFrame(int pos) {
   strip.ClearTo(color_black);
@@ -123,7 +124,7 @@ void tickScroll() {
       strip.ClearTo(color_black);
       strip.Show();
       prevTime = 0;  // redraw the clock immediately instead of waiting a second
-      if (!buzzerMutedByDark()) {
+      if (!scrollSilent && !buzzerMutedByDark()) {
         doubleBeep();  // the base's end-of-scroll signal
       }
       return;
@@ -139,7 +140,9 @@ void beginMessageScroll() {
   passesLeft = messageRepeatCount > 0 ? messageRepeatCount : 1;
   scrollLastStep = 0;                              // render first frame now
   scrollActive = true;
-  if (!buzzerMutedByDark()) {
+  scrollSilent = scrollQuiet;
+  scrollQuiet = false;
+  if (!scrollSilent && !buzzerMutedByDark()) {
     doubleBeep();  // the base's start-of-scroll signal
   }
 }

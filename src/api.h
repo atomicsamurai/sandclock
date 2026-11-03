@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "hass.h"
+#include "safe_mode.h"
 #include "scroll.h"
 #include "sounds.h"
 #include "time_ops.h"
@@ -58,6 +59,10 @@ void updateWifiConfig() {
   }
   Log.traceln("update wifiConfig");
   saveConfig();
+  // A clean reboot applies the new credentials: at boot the station is tried
+  // before the setup AP comes up, with no client pause in the way.
+  rebootPending = true;
+  rebootAtMs = millis() + 1500;
   getConfig();
 }
 
@@ -210,6 +215,26 @@ void setChime() {
   getConfig();
 }
 
+void regenApPassword() {
+  generateApPassword();
+  if (apActive) {
+    WiFi.softAP("SandClock", config.apPassword);  // applies now; joined phones must rejoin
+  }
+  server.send(200, "text/json", "{\"result\":\"ok\"}");
+}
+
+// Diagnostics: crash on purpose to exercise boot-loop protection (safe_mode.h).
+void debugCrash() {
+  String type = server.arg("type");
+  if (type != "exception" && type != "wdt") {
+    server.send(400, "text/plain", "400: type must be exception or wdt");
+    return;
+  }
+  server.send(200, "text/plain", "crashing now (" + type + ")");
+  delay(200);  // let the reply go out
+  crashNow(type == "wdt");
+}
+
 void reboot() {
   server.send(200, F("text/html"), R""(
 <!DOCTYPE html>
@@ -313,7 +338,7 @@ void showMessage() {
 }
 
 void getInfo() {
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(2560);
   bool up = WiFi.status() == WL_CONNECTED;
 
   doc["fwVersion"] = FW_VERSION;
@@ -359,6 +384,10 @@ void getInfo() {
 
   doc["uptimeSec"] = millis() / 1000;
   doc["resetReason"] = ESP.getResetReason();
+  doc["resetInfo"] = ESP.getResetInfo();
+  doc["crashCount"] = crashCount;
+  doc["safeMode"] = safeMode;
+  doc["apPassword"] = config.apPassword;
   doc["cpuMHz"] = ESP.getCpuFreqMHz();
   doc["chipId"] = String(ESP.getChipId(), HEX);
   doc["freeHeap"] = ESP.getFreeHeap();
@@ -381,6 +410,19 @@ void getInfo() {
   server.send(200, "text/json", out);
 }
 
+// Captive portal: while the setup AP is up, point any unknown address at the
+// index page. Joining phones probe a well-known URL; the redirect makes them
+// open the clock page by themselves. sandclock.local itself is handled by
+// mDNS, which .local lookups bypass this redirect for.
+void captivePortalRedirect() {
+  if (apActive && (server.method() == HTTP_GET || server.method() == HTTP_HEAD)) {
+    server.sendHeader("Location", "http://192.168.4.1/", true);
+    server.send(302, "text/plain", "");
+    return;
+  }
+  server.send(404, "text/plain", "404: Not Found");
+}
+
 void setupHandlers() {
   server.on("/", HTTP_GET, secured(serveIndex));
   server.on("/index.html", HTTP_GET, secured(serveIndex));
@@ -395,6 +437,8 @@ void setupHandlers() {
   server.on("/config/hourformat", HTTP_POST, secured(setHourFormat));
   server.on("/config/displaystyle", HTTP_POST, secured(setDisplayStyle));
   server.on("/config/chime", HTTP_POST, secured(setChime));
+  server.on("/config/ap", HTTP_POST, secured(regenApPassword));
+  server.on("/debug/crash", HTTP_POST, secured(debugCrash));
   server.on("/config/wifiConfig", HTTP_POST, secured(updateWifiConfig));
   server.on("/config/auth", HTTP_POST, secured(setAuth));
   server.on("/config/timezones", HTTP_POST, secured(setTimezone));
@@ -404,5 +448,40 @@ void setupHandlers() {
   server.on("/reboot", HTTP_GET, secured(reboot));
   server.on("/sound", HTTP_POST, secured(playSound));
   server.on("/showmessage", HTTP_POST, secured(showMessage));
+  server.onNotFound(captivePortalRedirect);
   // NOTE: /config masks wifi_password and the HA token as SECRET_MASK.
+}
+
+// Safe mode: no UI files, display or sensors, just enough to see why we are
+// here and to flash a fix.
+String htmlEscape(String s) {
+  s.replace("&", "&amp;");
+  s.replace("<", "&lt;");
+  s.replace(">", "&gt;");
+  return s;
+}
+
+void safePage() {
+  String html = F("<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
+                  "<title>Safe mode</title><body style='font-family:sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem'>"
+                  "<h1>Safe mode</h1><p>The clock crashed ");
+  html += crashCount;
+  html += F(" times in a row while starting, so it is only running WiFi and updates. "
+            "Upload a working firmware, or try a normal start.</p><p>Firmware ");
+  html += FW_VERSION;
+  html += " (";
+  html += GIT_REV;
+  html += F(")<br>Last reset: ");
+  html += htmlEscape(ESP.getResetInfo());
+  html += F("</p><p><a href='/update'>Upload firmware or filesystem</a></p>"
+            "<p><a href='/reboot'>Try a normal start</a></p>");
+  server.send(200, "text/html", html);
+}
+
+void setupSafeHandlers() {
+  server.on("/", HTTP_GET, secured(safePage));
+  server.on("/info", HTTP_GET, secured(getInfo));
+  server.on("/config", HTTP_GET, secured(getConfig));
+  server.on("/reboot", HTTP_GET, secured(reboot));
+  server.onNotFound(captivePortalRedirect);
 }

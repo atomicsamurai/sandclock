@@ -19,6 +19,7 @@ void initDefaultConfig() {
   strcpy(config.tzName, "Etc/UTC");
   strcpy(config.tzValue, "UTC0");
   strcpy(config.authPassword, "");
+  strcpy(config.apPassword, "");
   strcpy(config.hassBaseUrl, "");
   strcpy(config.hassEntityId, "");
   strcpy(config.hassAT, "");
@@ -104,6 +105,7 @@ bool applyConfigJson(const char *json) {
   loadString(config.tzName, sizeof(config.tzName), doc["tzName"]);
   loadString(config.tzValue, sizeof(config.tzValue), doc["tzValue"]);
   loadString(config.authPassword, sizeof(config.authPassword), doc["authPassword"]);
+  loadString(config.apPassword, sizeof(config.apPassword), doc["apPassword"]);
 
   char buffer[1024];
   serializeJson(doc, buffer);
@@ -159,6 +161,7 @@ DynamicJsonDocument getConfigDoc(bool redact = false) {
   doc["authEnabled"] = config.authPassword[0] != 0;
   if (!redact) {
     doc["authPassword"] = config.authPassword;  // never sent over HTTP, only saved
+    doc["apPassword"] = config.apPassword;
   }
   return doc;
 }
@@ -190,4 +193,19 @@ bool saveConfig() {
   }
   Log.traceln("Saved config");
   return true;
+}
+
+// Setup-AP WPA2 password: random, stored, scrolled across the matrix and shown
+// in the web UI. No 0/O/1/I/L so it can be read off the LEDs and typed without
+// guessing (and only A-Z/2-9, which the scroll font can draw).
+const char AP_PASSWORD_CHARS[] = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const int AP_PASSWORD_LENGTH = 10;
+
+void generateApPassword() {
+  const int n = sizeof(AP_PASSWORD_CHARS) - 1;
+  for (int i = 0; i < AP_PASSWORD_LENGTH; i++) {
+    config.apPassword[i] = AP_PASSWORD_CHARS[ESP.random() % n];
+  }
+  config.apPassword[AP_PASSWORD_LENGTH] = 0;
+  saveConfig();
 }

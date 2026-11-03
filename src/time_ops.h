@@ -35,6 +35,25 @@ void applyTimezone() {
 unsigned long lastNtpWarnMs = 0;
 
 // Called about once a second; warns once a minute while online but unsynced.
+// Reboot when the network and time have both been gone this long: safe mode
+// cannot see a wedged-but-running clock, and a wall clock that is neither
+// synced nor reachable has nothing to offer.
+const unsigned long OFFLINE_REBOOT_MS = 30UL * 60 * 1000;
+unsigned long offlineSinceMs = 0;
+
+void rebootIfOffline() {
+  if (WiFi.status() != WL_CONNECTED || !timeSynced()) {
+    if (offlineSinceMs == 0) {
+      offlineSinceMs = millis();
+    } else if (millis() - offlineSinceMs >= OFFLINE_REBOOT_MS) {
+      Log.errorln("[NTP] offline/unsynced for 30 minutes: rebooting to recover");
+      ESP.restart();
+    }
+    return;
+  }
+  offlineSinceMs = 0;
+}
+
 void warnIfNtpStale() {
   if (timeSynced() || WiFi.status() != WL_CONNECTED) {
     return;

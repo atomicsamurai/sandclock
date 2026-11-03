@@ -36,7 +36,27 @@ CLOCK_PASSWORD='...' tools/deploy.sh   # if a password is set
 
 Settings (WiFi, Home Assistant, colors, timezone, display, buzzer, password) live in the flash sector reserved for EEPROM, which sits after the filesystem. Flashing a firmware or filesystem image does not touch it. A full chip erase does, after which the clock starts with defaults and the WiFi credentials compiled in from `src/secrets.h`.
 
-If the clock cannot join WiFi within 20 seconds of boot it opens an unsecured access point named `SandClock` (web UI at `http://192.168.4.1`) while it keeps retrying your network every 30 seconds. The access point goes away once WiFi connects.
+If the clock cannot join WiFi within 20 seconds of boot it opens a WPA2 access point named `SandClock` (web UI at `http://192.168.4.1`) while it keeps retrying your network every 30 seconds. The access point goes away once WiFi connects.
+
+The access point password is random (10 characters, no look-alikes such as `0`/`O` or `1`/`I`), created the first time it is needed and stored with the other settings. While nobody has joined, the clock scrolls `AP PW <password>` across the matrix once a minute at a slow, readable pace. It is also shown in the web UI's Security card, where you can generate a new one. While a device is joined to the access point, the clock pauses its WiFi retries (one radio cannot serve both reliably), resuming about ten seconds after the last device leaves. Saving WiFi credentials from the setup page reboots the clock, which then tries the new network before opening the access point again.
+
+Joining phones get a captive-portal redirect: unknown URLs are pointed at `http://192.168.4.1/`, so opening the setup page is usually automatic. `http://sandclock.local` also works while the access point is up.
+
+## Safe mode
+
+A firmware that crashes while starting cannot be fixed over WiFi, because it never stays up long enough to receive an update. The clock counts crashed starts (exception or watchdog resets) in RTC memory. After three in a row it starts in safe mode: only WiFi (or the setup access point), a status page and OTA run. The matrix stays dark and the board's LED blinks fast. The status page at `http://sandclock.local/` shows the reset details; `/info` reports `safeMode`, `crashCount` and `resetInfo`.
+
+Upload a working firmware (`tools/deploy.sh`, or the `/update` page) and the clock returns to normal. "Try a normal start" on the status page also resets the count. Two minutes of stable running clear the count, and a power cycle clears it too (RTC memory does not survive power loss).
+
+A different failure mode is the clock running fine but its network stack wedged, which neither the watchdog nor safe mode catches. If the clock is unreachable and unsynced for 30 minutes it reboots itself.
+
+To try it, crash the clock on purpose three times, waiting for each restart:
+
+```
+for i in 1 2 3; do curl -u admin:PASSWORD -X POST http://sandclock.local/debug/crash -d type=exception; sleep 25; done
+```
+
+`type=wdt` hangs the clock until the software watchdog resets it instead.
 
 ## Security
 
@@ -69,6 +89,8 @@ Use `curl -u admin:PASSWORD` when a password is set. POST bodies are form-encode
 | POST | `/config/hassConfig` | `hassBaseUrl`, `hassEntityId`, `hassAT` |
 | POST | `/config/wifiConfig` | `wifi_ssid`, `wifi_password` |
 | POST | `/config/auth` | `authPassword` (8-31 characters, empty turns auth off) |
+| POST | `/config/ap` | Generate a new setup access point password |
+| POST | `/debug/crash` | `type` `exception` or `wdt`: crash on purpose to test safe mode |
 | POST | `/showmessage` | `messageText`, optional `repeatCount` 1-100, `scrollDelay` 10-1000 ms |
 | POST | `/sound` | `type` `single` or `double` |
 | GET | `/syncTime` | Restart NTP and sync now |
@@ -96,7 +118,7 @@ The chime can be switched off, and "mute when dark" silences all automatic beeps
 
 ## Tests and CI
 
-`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI preview draws the same frames as `tools/render.py` (which mirrors `src/display.h`), and the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies. Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
+`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI preview draws the same frames as `tools/render.py` (which mirrors `src/display.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, and the safe mode decision logic (`src/safe_mode_logic.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
 
 When you change a layout in `src/display.h`, update `tools/render.py` and `data/js/preview.js` too; the preview test fails if they drift.
 

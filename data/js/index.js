@@ -111,7 +111,8 @@ function getDeviceInfo() {
       ]],
       ["System", [
         ["Uptime", fmtUptime(i.uptimeSec)],
-        ["Last reset", i.resetReason],
+        ["Last reset", i.resetReason + (i.crashCount ? ` (${i.crashCount} crashed starts in a row)` : "")],
+        ...(i.crashCount || /Exception|WDT/.test(i.resetReason) ? [["Reset details", i.resetInfo]] : []),
         ["Chip ID", i.chipId],
         ["CPU", `${i.cpuMHz} MHz`],
         ["Free heap", `${fmtBytes(i.freeHeap)} (largest block ${fmtBytes(i.maxFreeBlock)}, ${i.heapFragmentation}% fragmented)`],
@@ -277,7 +278,15 @@ function refreshLight() {
   $.get("/info", i => {
     lastLight = i.lightLevel;
     showLight();
+    $('#apPassword').text(i.apPassword || "(created the first time the access point starts)");
   });
+}
+
+function regenApPassword() {
+  if (!confirm("Generate a new setup password? Phones already joined to the SandClock network will need the new one.")) return;
+  $.post("/config/ap")
+    .done(() => refreshLight())
+    .fail(xhr => alert(`Rejected (${xhr.status}): ${xhr.responseText}`));
 }
 
 function showLight() {

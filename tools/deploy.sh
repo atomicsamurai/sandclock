@@ -87,6 +87,8 @@ case "$code" in
 esac
 INFO=$(get "http://$HOST/info") || die "could not read /info from $HOST"
 echo "clock: running $(jq -r .fwVersion <<<"$INFO") ($(jq -r '.gitRev // "pre-2.8"' <<<"$INFO")), uptime $(jq -r .uptimeSec <<<"$INFO")s"
+[[ "$(jq -r '.safeMode // false' <<<"$INFO")" == "true" ]] &&
+  echo "NOTE: the clock is in SAFE MODE ($(jq -r .crashCount <<<"$INFO") crashed starts); flashing a fixed firmware restores normal operation"
 echo "deploy: $EXPECT_VER ($EXPECT_REV)  fw=$DO_FW fs=$DO_FS"
 
 if (( DRY )); then

@@ -10,7 +10,7 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.10.0"
+#define FW_VERSION "2.11.0"
 
 // Set at build time by tools/git_rev.py (git describe), so /info shows exactly
 // which commit is running.
@@ -45,6 +45,7 @@ struct ConfigObject {
   char tzName[32];
   char tzValue[32];
   char authPassword[32];  // HTTP Basic password for user "admin"; empty = auth off
+  char apPassword[16];    // WPA2 password of the setup access point (generated, 10 chars)
   RgbColor clock_color;
   RgbColor temp_color;
   RgbColor other_color;
@@ -69,6 +70,7 @@ int showingMessage = 0;
 char messageText[128] = "";
 uint16_t messageScrollDelayMs = 50;  // defaults until /showmessage sets them
 uint16_t messageRepeatCount = 1;
+bool scrollQuiet = false;            // next scroll skips its start/end beeps (system announcements)
 
 // ---- Timing counters (millis() based) --------------------------------------
 unsigned long prevTime = 0;              // 1s clock/temp tick
@@ -89,6 +91,8 @@ volatile time_t ntpLastSync = 0;    // epoch of the last SNTP time update (0 = n
 volatile uint32_t ntpSyncCount = 0;
 uint32_t minFreeHeap = 0xFFFFFFFF;  // lowest free heap seen since boot
 bool apActive = false;              // setup AP is up (WiFi not connected)
+bool safeMode = false;              // started in safe mode after repeated crashes (see safe_mode.h)
+uint32_t crashCount = 0;            // consecutive crashed starts, cleared after 2 minutes of stable running
 bool rebootPending = false;         // loop() restarts at rebootAtMs (lets a handler reply first)
 unsigned long rebootAtMs = 0;
 
