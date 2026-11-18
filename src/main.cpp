@@ -174,6 +174,70 @@ void announceApPassword() {
   showingMessage = 1;  // loop() starts the scroll
 }
 
+// On-clock diagnostics, for when the web UI is out of reach: scrolled once
+// after every boot and whenever someone covers the light sensor, or flashes a
+// light at it, three times in a row. The boot scroll is quiet and network-only (uptime, HA and time
+// mean nothing yet); the gesture one beeps as confirmation and adds uptime
+// plus whatever needs attention ("HA ERR", "NO TIME"). Upper case only.
+const uint16_t DIAG_SCROLL_MS = 120;
+
+void showDiagnostics(bool atBoot) {
+  char up[24] = "";
+  unsigned long s = millis () / 1000;
+  if (atBoot) {
+    // uptime is zero
+  } else if (s >= 86400) {
+    snprintf (up, sizeof (up), "  UP %luD%02luH", s / 86400, (s % 86400) / 3600);
+  } else if (s >= 3600) {
+    snprintf (up, sizeof (up), "  UP %luH%02luM", s / 3600, (s % 3600) / 60);
+  } else {
+    snprintf (up, sizeof (up), "  UP %luM", s / 60);
+  }
+  char ha[16] = "";
+  if (!atBoot && hassConfigured ()) {
+    bool haOk = haLastOkMs && haLastOkMs == haLastAttemptMs;
+    if (haOk) {
+      strcpy (ha, "  HA OK");
+    } else if (haLastAttemptMs) {
+      snprintf (ha, sizeof (ha), "  HA ERR %d", haLastCode);
+    }
+  }
+  const char *timeState = atBoot || timeSynced () ? "" : "  NO TIME";
+  if (WiFi.status () == WL_CONNECTED) {
+    snprintf (messageText, sizeof (messageText), "WIFI %s  IP %s  FW %s%s%s%s",
+              WiFi.SSID ().c_str (), WiFi.localIP ().toString ().c_str (), FW_VERSION, up, ha, timeState);
+  } else if (apActive) {
+    snprintf (messageText, sizeof (messageText), "NO WIFI %s  AP SANDCLOCK PW %s  IP %s  FW %s",
+              config.wifi_ssid, config.apPassword, WiFi.softAPIP ().toString ().c_str (), FW_VERSION);
+    lastApAnnounceMs = millis () ? millis () : 1;  // the AP password was just shown
+  } else {
+    snprintf (messageText, sizeof (messageText), "NO WIFI %s  FW %s%s",
+              config.wifi_ssid, FW_VERSION, up);
+  }
+  Log.noticeln ("Diagnostics: %s", messageText);
+  messageScrollDelayMs = DIAG_SCROLL_MS;
+  messageRepeatCount = 1;
+  scrollQuiet = atBoot;
+  showingMessage = 1;  // loop() starts the scroll (replacing any running one)
+}
+
+// Samples the LDR at 20 Hz for the light gesture (light_gesture_logic.h).
+unsigned long lastGestureSampleMs = 0;
+
+void checkLightGesture() {
+  unsigned long now = millis ();
+  if (now - lastGestureSampleMs < GESTURE_SAMPLE_MS) {
+    return;
+  }
+  lastGestureSampleMs = now;
+  ldrNow = analogRead (sensorPin);
+  if (lightGesture.update (now, ldrNow)) {
+    Log.noticeln ("Light gesture detected (%s, baseline %d)",
+                  lightGesture.kind == LightGesture::FLASH ? "flashes" : "covers", lightGesture.baseline);
+    showDiagnostics (false);
+  }
+}
+
 // Safe mode (see safe_mode.h): WiFi, a status page and OTA only. The matrix is
 // left alone, since the display code may be what keeps crashing; the board's
 // LED blinks fast instead.
@@ -287,6 +351,8 @@ void setup() {
     size_t fileSize = dir.fileSize();
     Log.traceln("FS File: %s, size: %s", fileName.c_str(), String(fileSize).c_str());
   }
+
+  showDiagnostics (true);  // once per boot, so the IP etc. can be read off the clock
 }
 
 void loop() {
@@ -306,6 +372,7 @@ void loop() {
   }
   maintainWifi();
   announceApPassword();
+  checkLightGesture();
   if (currentMillis - prevTimeBrightness >= 5000) { // every 5 secs
     prevTimeBrightness = currentMillis;
     handleBrightness();

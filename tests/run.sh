@@ -34,4 +34,9 @@ BIN2="$(mktemp -d)/safe_mode_test"
 ${CXX:-c++} -std=c++17 tests/safe_mode_test.cpp -o "$BIN2"
 "$BIN2"
 
+step "Light-sensor gesture (src/light_gesture_logic.h)"
+BIN3="$(mktemp -d)/light_gesture_test"
+${CXX:-c++} -std=c++17 tests/light_gesture_test.cpp -o "$BIN3"
+"$BIN3"
+
 printf '\nall checks passed\n'

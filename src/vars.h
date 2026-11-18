@@ -5,12 +5,14 @@
 #include <ArduinoJson.h>
 #include <NeoPixelBrightnessBus.h>
 
+#include "light_gesture_logic.h"
+
 /*
  * Firmware version. Bump on every behavior-changing release; the UI shows it
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.12.0"
+#define FW_VERSION "2.13.0"
 
 // Set at build time by tools/git_rev.py (git describe), so /info shows exactly
 // which commit is running.
@@ -82,6 +84,8 @@ int beepDone = 0;                        // chime latch for checkChime()
 // ---- Sound ----------------------------------------------------------------
 int sensorValue = 0;  // last LDR reading (also used by handleBrightness)
 int lightLevel = -1;  // LDR reading smoothed over ~20s; -1 until the first sample
+LightGesture lightGesture;  // cover or flash the LDR 3x to show diagnostics (main.cpp)
+int ldrNow = -1;            // latest 20 Hz LDR sample fed to lightGesture
 
 // ---- Status reported by /info ---------------------------------------------
 int haLastCode = 0;                 // last HA fetch: HTTP status, -1 transport error, -2 non-numeric state

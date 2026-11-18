@@ -14,6 +14,7 @@ Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED m
 - Automatic brightness from an LDR on `A0`
 - Web UI at `http://sandclock.local` with live previews of the clock face, plus a device info panel
 - Optional password, OTA updates, and settings that survive firmware and filesystem flashes
+- Diagnostics (WiFi name, IP address, firmware) scrolled on the clock after each boot, or on demand by covering the light sensor (or flashing a light at it) three times
 
 ## Build and flash
 
@@ -112,6 +113,15 @@ curl -u admin:PASSWORD -X POST http://sandclock.local/showmessage \
 
 The chime can be switched off, and "mute when dark" silences all automatic beeps (the chime and the message start/end beeps) while the smoothed light reading is below the threshold. The Buzzer card shows the live sensor reading to help you pick the threshold; lower readings mean darker. The Sound buttons in the web UI always beep.
 
+## Diagnostics on the clock
+
+For when the web UI is out of reach (new network, unknown IP address), the clock can show its status on the matrix:
+
+- **After every boot** it scrolls `WIFI <name>  IP <address>  FW <version>` once, quietly. Without WiFi it shows `NO WIFI <name>` and, while the setup access point is up, its name, password and address.
+- **On demand**, cover the light sensor with your hand three times in a row, or in a dark room flash a light at it (a phone flashlight) three times. Each cover or flash and each gap should last about a quarter to one second, all within a few seconds. The clock beeps and scrolls the same details plus its uptime, and anything that needs attention (`HA ERR <code>`, `NO TIME`).
+
+Both gestures are measured against the recent light level: a cover has to drop the reading below half, a flash has to at least double it. So covers work wherever there is some light (not below a level of 60), and flashes work in dim and dark rooms. Lights switching on or off, people walking past, headlights, a single shadow and lightning do not trigger them, and mixing covers and flashes in one sequence does not count. After a gesture the sensor is ignored for 10 seconds. `/info` reports `ldrNow` (the live 20 Hz reading) and `gestureBaseline` (the learned light level) for tuning.
+
 ## Tools
 
 | File | Purpose |
@@ -123,7 +133,7 @@ The chime can be switched off, and "mute when dark" silences all automatic beeps
 
 ## Tests and CI
 
-`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI preview draws the same frames as `tools/render.py` (which mirrors `src/display.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, and the safe mode decision logic (`src/safe_mode_logic.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
+`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI preview draws the same frames as `tools/render.py` (which mirrors `src/display.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, the safe mode decision logic (`src/safe_mode_logic.h`), and the light-sensor gesture (`src/light_gesture_logic.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
 
 When you change a layout in `src/display.h`, update `tools/render.py` and `data/js/preview.js` too; the preview test fails if they drift.
 

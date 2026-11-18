@@ -379,6 +379,8 @@ void getInfo() {
   doc["haOk"] = haLastOkMs && haLastOkMs == haLastAttemptMs;
   doc["ldr"] = sensorValue;
   doc["lightLevel"] = lightLevel;
+  doc["ldrNow"] = ldrNow;                          // 20 Hz sample used by the light gesture
+  doc["gestureBaseline"] = lightGesture.baseline;  // its learned light level (covers off below 60)
   doc["buzzerMuted"] = buzzerMutedByDark();
   doc["chimeEnabled"] = config.chimeEnabled;
 
