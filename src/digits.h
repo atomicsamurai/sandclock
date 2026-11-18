@@ -750,7 +750,9 @@ const Font fonts[] =
    * 5x7-font.h, bit7=top, column-major), emboldened to 6x8 with 2px
    * strokes. '0' hand-fixed for an open counter (the mechanical bold
    * closed its slash into the wall). Colon 2x2 dots. Same slots as
-   * SevenSeg in showTime().
+   * SevenSeg in showTime(). Digits stretched from 7 to all 8 rows by
+   * repeating one row each; '3' redrawn with a flat top and a straight
+   * middle stroke.
    */
   Font
   {
@@ -765,8 +767,8 @@ const Font fonts[] =
           0b110011,
           0b110011,
           0b110011,
+          0b110011,
           0b011110,
-          0b000000,
         }
       },
       { // 1
@@ -778,8 +780,8 @@ const Font fonts[] =
           0b001100,
           0b001100,
           0b001100,
+          0b001100,
           0b011110,
-          0b000000,
         }
       },
       { // 2
@@ -788,24 +790,24 @@ const Font fonts[] =
           0b011110,
           0b110011,
           0b000011,
+          0b000011,
           0b000110,
           0b001100,
           0b011000,
           0b111111,
-          0b000000,
         }
       },
       { // 3
         6,
         {
-          0b111110,
+          0b111111,
           0b000011,
           0b000110,
-          0b001100,
-          0b000110,
+          0b001110,
+          0b000011,
+          0b000011,
           0b110011,
           0b011110,
-          0b000000,
         }
       },
       { // 4
@@ -818,7 +820,7 @@ const Font fonts[] =
           0b111111,
           0b000110,
           0b000110,
-          0b000000,
+          0b000110,
         }
       },
       { // 5
@@ -829,9 +831,9 @@ const Font fonts[] =
           0b111110,
           0b000011,
           0b000011,
+          0b000011,
           0b110011,
           0b011110,
-          0b000000,
         }
       },
       { // 6
@@ -843,8 +845,8 @@ const Font fonts[] =
           0b110011,
           0b110011,
           0b110011,
+          0b110011,
           0b011110,
-          0b000000,
         }
       },
       { // 7
@@ -857,7 +859,7 @@ const Font fonts[] =
           0b001100,
           0b001100,
           0b001100,
-          0b000000,
+          0b001100,
         }
       },
       { // 8
@@ -865,12 +867,12 @@ const Font fonts[] =
         {
           0b011110,
           0b110011,
-          0b011110,
-          0b110011,
-          0b110011,
           0b110011,
           0b011110,
-          0b000000,
+          0b110011,
+          0b110011,
+          0b110011,
+          0b011110,
         }
       },
       { // 9
@@ -879,11 +881,11 @@ const Font fonts[] =
           0b011110,
           0b110011,
           0b110011,
+          0b110011,
           0b011111,
           0b000011,
           0b000110,
           0b011110,
-          0b000000,
         }
       },
       { // 10 = COLON
