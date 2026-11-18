@@ -7,7 +7,7 @@ const path = require('path');
 const vm = require('vm');
 
 const root = path.resolve(__dirname, '..');
-const ctx = { window: {}, $: () => {}, setInterval: () => {}, Date, Math, Array, parseInt };
+const ctx = { window: {}, $: () => {}, setInterval: () => {}, Image: function () {}, Date, Math, Array, parseInt };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(root, 'data/js/fonts.js'), 'utf8') + '\nthis.CLOCK_FONTS = CLOCK_FONTS;', ctx);
 vm.runInContext(fs.readFileSync(path.join(root, 'data/js/preview.js'), 'utf8'), ctx);

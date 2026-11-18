@@ -2,7 +2,7 @@
 // showTime/showTemperature/showTemperatureSmall/showCombined in src/display.h
 // (and tools/render.py); change them together.
 (function () {
-  const W = 32, H = 8, CELL = 8;
+  const W = 32, H = 8;
   const COLON = 10, DEGREES = 13, MINUS = 14, UB_MINUS = 11;
   const NO_TEMP = -1000;
   const SAMPLE_TEMP = -15;
@@ -100,16 +100,39 @@
          { label: "Temperature screen (2 s)", frame: temperatureFrame(t, tempColor) }];
   }
 
+  // img/panel.jpg is a photo of the real wood front panel with the LEDs off
+  // (made by tools/make_panel.py). The LED grid position is measured from it.
+  const PANEL = { w: 768, h: 195, x0: 17.2, y0: 25.2, dx: 20.77, dy: 20.56 };
+  const panel = new Image();
+  panel.onload = () => update();
+  panel.src = "img/panel.jpg";
+
+  // A lit LED seen through the wood: a soft halo, a solid dot and a pale core.
+  function led(ctx, cx, cy, c) {
+    const p = PANEL.dx;
+    const rgba = a => `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
+    const w = k => Math.round(255 - (255 - k) * 0.45);  // toward white
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, p * 0.75);
+    g.addColorStop(0, `rgb(${w(c.r)}, ${w(c.g)}, ${w(c.b)})`);
+    g.addColorStop(0.2, rgba(1));
+    g.addColorStop(0.45, rgba(0.95));
+    g.addColorStop(0.62, rgba(0.3));
+    g.addColorStop(1, rgba(0));
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - p * 0.75, cy - p * 0.75, p * 1.5, p * 1.5);
+  }
+
   function draw(canvas, frame) {
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#0b0b0b";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (panel.complete && panel.naturalWidth) {
+      ctx.drawImage(panel, 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = "#d9a07a";  // wood tone until the photo loads
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        ctx.fillStyle = frame[y][x] || "#1c1c1c";
-        ctx.beginPath();
-        ctx.arc(x * CELL + CELL / 2, y * CELL + CELL / 2, CELL * 0.4, 0, 2 * Math.PI);
-        ctx.fill();
+        if (frame[y][x]) led(ctx, PANEL.x0 + x * PANEL.dx, PANEL.y0 + y * PANEL.dy, frame[y][x]);
       }
     }
   }
@@ -118,8 +141,8 @@
   // colors (keeping the hue) to keep the digits readable on screen.
   function css(c) {
     const k = Math.max(c.r, c.g, c.b);
-    const s = k > 0 && k < 140 ? 140 / k : 1;
-    return `rgb(${Math.round(c.r * s)}, ${Math.round(c.g * s)}, ${Math.round(c.b * s)})`;
+    const s = k > 0 && k < 160 ? 160 / k : 1;
+    return { r: Math.round(c.r * s), g: Math.round(c.g * s), b: Math.round(c.b * s) };
   }
 
   // Device time advanced by however long this page has been open.
@@ -151,7 +174,7 @@
       $box.empty();
       list.forEach(() => {
         $box.append($('<div class="small text-muted mt-2 preview-label">'))
-            .append($('<canvas class="w-100" style="max-width:384px" width="' + W * CELL + '" height="' + H * CELL + '">'));
+            .append($('<canvas class="w-100" style="max-width:480px;border-radius:6px" width="' + PANEL.w + '" height="' + PANEL.h + '">'));
       });
       state.shown = style;
     }

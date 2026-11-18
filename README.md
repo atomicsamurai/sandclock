@@ -2,6 +2,11 @@
 
 Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED matrix. It is based on the 7-Segment-Digital-Clock-V2 project; the original build notes are kept at the end.
 
+<p>
+  <img src="docs/clock-time.jpg" width="49%" alt="The clock showing 8:00 in red through a wood front panel">
+  <img src="docs/clock-temperature.jpg" width="49%" alt="The clock showing an outdoor temperature of 0 degrees in cyan">
+</p>
+
 - Time from NTP with POSIX timezone and DST rules, shown until synced as `--:--`
 - Outdoor temperature from a Home Assistant sensor, with a cycle (time 5 s, temperature 2 s) or combined display
 - Scrolling messages from the web UI or the HTTP API
