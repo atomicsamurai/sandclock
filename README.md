@@ -9,7 +9,7 @@ Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED m
 
 - Time from NTP with POSIX timezone and DST rules, shown until synced as `--:--`
 - Outdoor temperature from a Home Assistant sensor, with a cycle (time 5 s, temperature 2 s) or combined display
-- Scrolling messages from the web UI or the HTTP API
+- Scrolling messages from the web UI or the HTTP API, with a live preview of how the text will scroll, how long it takes and which characters the clock can't draw
 - Hourly and half-hourly chime, optionally muted when the light sensor says it is dark
 - Automatic brightness from an LDR on `A0`
 - Web UI at `http://sandclock.local` with live previews of the clock face, plus a device info panel
@@ -109,7 +109,7 @@ Use `curl -u admin:PASSWORD` when a password is set. POST bodies are form-encode
 | POST | `/config/auth` | `authPassword` (8-31 characters, empty turns auth off) |
 | POST | `/config/ap` | Generate a new setup access point password |
 | POST | `/debug/crash` | `type` `exception` or `wdt`: crash on purpose to test safe mode |
-| POST | `/showmessage` | `messageText`, optional `repeatCount` 1-100, `scrollDelay` 10-1000 ms |
+| POST | `/showmessage` | `messageText` (up to 127 bytes; letters show in upper case, digits and `- : . _` are drawn, anything else is a gap), optional `repeatCount` 1-100, `scrollDelay` 10-1000 ms per column |
 | POST | `/sound` | `type` `single` or `double` |
 | GET | `/syncTime` | Restart NTP and sync now |
 | GET | `/reboot` | Restart |
@@ -177,13 +177,13 @@ automation:
 | File | Purpose |
 | --- | --- |
 | `tools/deploy.sh` | Build, OTA flash, verify (see above) |
-| `tools/render.py` | Terminal mock of the matrix using the real glyphs from `src/digits.h`, for example `python3 tools/render.py combined --time 14:08 --temp -4` |
-| `tools/gen_fonts_js.py` | Regenerates `data/js/fonts.js` (used by the web UI preview) after editing `src/digits.h` |
+| `tools/render.py` | Terminal mock of the matrix using the real glyphs from `src/digits.h` and `src/scroll.h`, for example `python3 tools/render.py combined --time 14:08 --temp -4` or `python3 tools/render.py message --text HELLO --pos 4` |
+| `tools/gen_fonts_js.py` | Regenerates `data/js/fonts.js` (used by the web UI previews) after editing `src/digits.h` or the message font in `src/scroll.h` |
 | `tools/git_rev.py` | PlatformIO pre-build script that embeds `git describe` |
 
 ## Tests and CI
 
-`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI preview draws the same frames as `tools/render.py` (which mirrors `src/display.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, the safe mode decision logic (`src/safe_mode_logic.h`), the light-sensor gesture (`src/light_gesture_logic.h`), and which settings files an import accepts (`src/config_import.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
+`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI previews draw the same frames as `tools/render.py` (which mirrors `src/display.h` and the message scroll in `src/scroll.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, the safe mode decision logic (`src/safe_mode_logic.h`), the light-sensor gesture (`src/light_gesture_logic.h`), and which settings files an import accepts (`src/config_import.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
 
 When you change a layout in `src/display.h`, update `tools/render.py` and `data/js/preview.js` too; the preview test fails if they drift.
 

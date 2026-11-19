@@ -2,7 +2,8 @@
 """Terminal mock of the 32x8 matrix. Glyph data is parsed from src/digits.h.
 
 The layouts below mirror showTime/showTemperature/showTemperatureSmall/
-showCombined in src/display.h; update both when one changes.
+showCombined in src/display.h, and show_message mirrors renderScrollFrame in
+src/scroll.h; update both when one changes.
 """
 import argparse
 import os
@@ -37,6 +38,44 @@ def load_fonts(path):
     if len(fonts) != len(names):
         sys.exit(f"parsed {len(fonts)} fonts but {len(names)} names in {path}")
     return dict(zip(names, fonts))
+
+
+def load_scroll_font(path):
+    """font5x7 from src/scroll.h: 5 columns per glyph (bit 0 = top row), in
+    getCharIndex order, which the // comments name. Returns the glyph
+    characters in order and their columns."""
+    src = open(path).read()
+    body = src[src.index("font5x7[][5]"):]
+    body = body[:body.index("};")]
+    chars, cols = "", []
+    for m in re.finditer(r"\{([^{}]*)\}\s*,?\s*//\s*(\S)", body):
+        chars += m.group(2)
+        cols.append([int(v, 16) for v in re.findall(r"0x([0-9A-Fa-f]+)", m.group(1))])
+    if not chars or any(len(c) != 5 for c in cols):
+        sys.exit(f"could not parse font5x7 in {path}")
+    return {"chars": chars, "cols": cols}
+
+
+def scroll_index(font, byte):
+    """getCharIndex: letters (either case), digits and - : . _; else -1."""
+    ch = chr(byte).upper() if byte < 128 else ""
+    return font["chars"].index(ch) if ch and ch in font["chars"] else -1
+
+
+def show_message(c, font, text, pos, color):
+    """One frame of a scrolling message with its first column at x = pos.
+    Every byte of the UTF-8 text takes 6 columns, as on the clock."""
+    for k, byte in enumerate(text.encode("utf-8")[:127]):
+        idx = scroll_index(font, byte)
+        if byte == 32 or idx < 0:
+            continue
+        for col in range(5):
+            x = pos + k * 6 + col
+            if 0 <= x < W:
+                bits = font["cols"][idx][col]
+                for row in range(7):
+                    if bits & (1 << row):
+                        c.px[row][x] = color
 
 
 class Canvas:
@@ -154,7 +193,7 @@ def temp_arg(s):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("view", nargs="?", default="all",
-                    choices=["time", "temp", "small", "combined", "all"])
+                    choices=["time", "temp", "small", "combined", "message", "all"])
     ap.add_argument("--time", help="HH:MM (default: now)")
     ap.add_argument("--temp", type=temp_arg, default=-15,
                     help="integer degrees, or 'none' for the HA-failure dashes")
@@ -164,6 +203,11 @@ def main():
                     help="r,g,b (firmware default 0,0,255)")
     ap.add_argument("--temp-color", type=rgb, default=(255, 0, 0),
                     help="r,g,b (firmware default 255,0,0)")
+    ap.add_argument("--text", default="HELLO", help="message for the message view")
+    ap.add_argument("--pos", type=int, default=0,
+                    help="message view: x of its first column (the clock starts at 32)")
+    ap.add_argument("--other-color", type=rgb, default=(255, 0, 0),
+                    help="r,g,b message color (firmware default 255,0,0)")
     ap.add_argument("--plain", action="store_true", help="## and . instead of ANSI color")
     ap.add_argument("--ruler", action="store_true", help="print column numbers (x mod 10)")
     a = ap.parse_args()
@@ -185,6 +229,9 @@ def main():
             show_time(c, fonts, h, m, dots, a.clock_color)
         elif v == "temp":
             show_temperature(c, fonts, a.temp, a.temp_color)
+        elif v == "message":
+            show_message(c, load_scroll_font(os.path.join(ROOT, "src", "scroll.h")),
+                         a.text, a.pos, a.other_color)
         elif v == "small":
             show_small(c, fonts, a.temp, a.temp_color)
         else:

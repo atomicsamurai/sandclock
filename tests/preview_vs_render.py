@@ -9,6 +9,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TIMES_TEMPS = [(8, 5, -4), (13, 47, -15), (0, 30, 23), (10, 8, 7), (21, 59, -1000),
                (12, 0, 0), (9, 9, 99), (23, 15, -99)]
+# message, x of its first column: entering, mid-way, leaving, lower case,
+# glyph-less punctuation and a 2-byte UTF-8 character
+MESSAGES = [("HELLO", 32), ("HELLO", 31), ("HELLO", 3), ("HELLO", -27), ("hello world", -20),
+            ("WIFI X  IP 192.168.1.225", -50), ("A-B:C_D.E", 0), ("CAF\u00c9 OK", 2), ("?!,", 0)]
 
 
 def normalize(text):
@@ -33,7 +37,17 @@ def main():
         if js_frames != py_frames:
             bad += 1
             print(f"  MISMATCH style={style} fmt={fmt} {h:02d}:{m:02d} temp={t}")
-    print(f"preview_vs_render: {len(cases)} cases, {bad} mismatches")
+    for text, pos in MESSAGES:
+        js = normalize(subprocess.check_output(
+            ["node", os.path.join(ROOT, "tests", "preview_frames.js"), "message", text, str(pos)]).decode())
+        out = subprocess.check_output(
+            ["python3", os.path.join(ROOT, "tools", "render.py"), "message",
+             "--text", text, "--pos", str(pos), "--plain"]).decode()
+        py = normalize("\n".join(out.strip("\n").split("\n")[1:]))
+        if js != py:
+            bad += 1
+            print(f"  MISMATCH message={text!r} pos={pos}")
+    print(f"preview_vs_render: {len(cases) + len(MESSAGES)} cases, {bad} mismatches")
     sys.exit(1 if bad else 0)
 
 

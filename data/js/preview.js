@@ -1,6 +1,7 @@
-// Preview of the clock face for the Display Style setting. The layouts mirror
-// showTime/showTemperature/showTemperatureSmall/showCombined in src/display.h
-// (and tools/render.py); change them together.
+// Preview of the clock face for the Display Style setting, and of a scrolling
+// message as it will run. The layouts mirror showTime/showTemperature/
+// showTemperatureSmall/showCombined in src/display.h and renderScrollFrame in
+// src/scroll.h (and tools/render.py); change them together.
 (function () {
   const W = 32, H = 8;
   const COLON = 10, DEGREES = 13, MINUS = 14, UB_MINUS = 11;
@@ -100,6 +101,36 @@
          { label: "Temperature screen (2 s)", frame: temperatureFrame(t, tempColor) }];
   }
 
+  // Scrolling message, as renderScrollFrame draws it: every byte of the
+  // UTF-8 text takes 6 columns (5 + a gap), letters show in upper case, and
+  // bytes without a glyph (space, punctuation, accents) stay dark.
+  const MSG_MAX = 127;  // messageText[128] in vars.h
+
+  function messageBytes(text) {
+    return Array.from(new TextEncoder().encode(text));
+  }
+
+  function scrollIndex(b) {
+    const ch = b < 128 ? String.fromCharCode(b).toUpperCase() : "";
+    return ch ? CLOCK_FONTS.Scroll.chars.indexOf(ch) : -1;
+  }
+
+  function messageFrame(text, pos, color) {
+    const f = newFrame(), cols = CLOCK_FONTS.Scroll.cols;
+    messageBytes(text).slice(0, MSG_MAX).forEach((b, k) => {
+      const idx = scrollIndex(b);
+      if (b === 32 || idx < 0) return;
+      for (let col = 0; col < 5; col++) {
+        const x = pos + k * 6 + col;
+        if (x < 0 || x >= W) continue;
+        for (let row = 0; row < 7; row++) {
+          if (cols[idx][col] & (1 << row)) f[row][x] = color;
+        }
+      }
+    });
+    return f;
+  }
+
   // img/panel.jpg is a photo of the real wood front panel with the LEDs off
   // (made by tools/make_panel.py). The LED grid position is measured from it.
   const PANEL = { w: 768, h: 195, x0: 17.2, y0: 25.2, dx: 20.77, dy: 20.56 };
@@ -185,6 +216,86 @@
     });
   }
 
+  // The message card's preview: runs the text across the panel at the chosen
+  // scroll delay, the chosen number of passes (up to 3), then a short pause.
+  const msg = { timer: null, pos: W, pass: 0 };
+
+  function messageColor() {
+    const $c = $("#other_color");
+    return css($c.data("minicolors-initialized") ? $c.minicolors("rgbObject") : { r: 255, g: 0, b: 0 });
+  }
+
+  function seconds(ms) {
+    const s = Math.round(ms / 1000);
+    return ms < 60000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.floor(s / 60)} min ${s % 60} s`;
+  }
+
+  // Width and timing as on the clock: a pass starts with the text just off
+  // the right edge and ends when its last column has left on the left.
+  function messageInfo(text, delay, repeat) {
+    const bytes = messageBytes(text);
+    const shown = bytes.slice(0, MSG_MAX);
+    const width = shown.length * 6 - 1;
+    const notes = [];
+    const blank = new Set();
+    for (const ch of text) {
+      const b = messageBytes(ch);
+      if (ch !== " " && (b.length > 1 || scrollIndex(b[0]) < 0)) blank.add(ch);
+    }
+    if (blank.size) notes.push(`No glyph, shown as a gap: ${[...blank].join(" ")}`);
+    if (bytes.length > MSG_MAX) notes.push(`Too long: only the first ${MSG_MAX} bytes are shown, the rest is cut off`);
+    const okDelay = delay >= 10 && delay <= 1000, okRepeat = repeat >= 1 && repeat <= 100;
+    if (!okDelay) notes.push("Scroll delay must be 10-1000 ms; the clock will refuse this");
+    if (!okRepeat) notes.push("Repeat count must be 1-100; the clock will refuse this");
+    const pass = (W + 1 + width) * (okDelay ? delay : 50);
+    const timing = okRepeat && repeat > 1
+      ? `One pass ${seconds(pass)}, ${repeat} passes ${seconds(pass * repeat)}`
+      : `Runs for ${seconds(pass)}`;
+    return { width, text: [timing, ...notes].join(". ") + ".", warn: notes.length > 0 };
+  }
+
+  function messageSettings() {
+    const text = String($("#messageText").val() || "");
+    const delay = parseInt($("#scrollDelay").val(), 10);
+    const repeat = parseInt($("#repeatCount").val(), 10);
+    return { text, delay, repeat, info: messageInfo(text, delay, repeat) };
+  }
+
+  function messageStep() {
+    const canvas = document.getElementById("messagePreview");
+    if (!canvas) return;
+    const m = messageSettings();
+    const delay = m.delay >= 10 && m.delay <= 1000 ? m.delay : 50;
+    if (!m.text) {
+      draw(canvas, newFrame());
+      msg.timer = null;
+      return;
+    }
+    if (msg.pos < -m.info.width) {  // one pass done
+      msg.pass++;
+      msg.pos = W;
+      if (msg.pass >= Math.min(Math.max(m.repeat, 1) || 1, 3)) {
+        msg.pass = 0;
+        draw(canvas, newFrame());
+        msg.timer = setTimeout(messageStep, 1200);
+        return;
+      }
+    }
+    draw(canvas, messageFrame(m.text, msg.pos, messageColor()));
+    msg.pos--;
+    msg.timer = setTimeout(messageStep, delay);
+  }
+
+  function restartMessage() {
+    const m = messageSettings();
+    $("#messageInfo").text(m.text ? m.info.text : "Type a message to preview it.")
+      .toggleClass("text-warning", m.info.warn && !!m.text).toggleClass("text-muted", !(m.info.warn && m.text));
+    clearTimeout(msg.timer);
+    msg.pos = W;
+    msg.pass = 0;
+    messageStep();
+  }
+
   function init() {
     $.get("/info", i => {
       const m = /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)/.exec(i.localTime || "");
@@ -196,9 +307,11 @@
       update();
     });
     $("#displayStyle, #hourFormat").on("change", update);
+    $("#messageText, #scrollDelay, #repeatCount").on("input", restartMessage);
+    restartMessage();
     setInterval(() => { state.dots = !state.dots; update(); }, 1000);
   }
 
-  window.ClockPreview = { update, init, frames };
+  window.ClockPreview = { update, init, frames, messageFrame, messageInfo };
   $(init);
 })();

@@ -651,10 +651,13 @@
             <br />
             <label for="messageText">Text</label>
             <input type="text" id="messageText" class="form-control" value="">
-            <label for="scrollDelay (ms)">Scroll delay</label>
+            <label for="scrollDelay">Scroll delay (ms per column, 10-1000)</label>
             <input type="text" id="scrollDelay" class="form-control" value="50">
-            <label for="repeatCount">Repeat count</label>
+            <label for="repeatCount">Repeat count (1-100)</label>
             <input type="text" id="repeatCount" class="form-control" value="1">
+            <div class="small text-muted mt-3">Preview</div>
+            <canvas id="messagePreview" class="w-100 d-block" style="max-width:480px;border-radius:6px" width="768" height="195"></canvas>
+            <small id="messageInfo" class="form-text text-muted"></small>
           </div>
           <button type="button" class="btn btn-primary" onclick="showMessage()">Display</button>
         </div>
