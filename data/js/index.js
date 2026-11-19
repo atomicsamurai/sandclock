@@ -145,6 +145,9 @@ function getServerValues() {
     $('#authStatus').text(data.authEnabled
       ? "Password protection is on."
       : "Password protection is off: anyone on your network can change settings.");
+    $('#exportNote').attr("class", "form-text " + (data.authEnabled ? "text-warning" : "text-muted")).text(data.authEnabled
+      ? "The file contains your WiFi password, Home Assistant token and admin password in plain text. Keep it somewhere private."
+      : "Without an admin password the file leaves out the WiFi password and Home Assistant token. Set one under Security to include them.");
     $('#wifi_ssid').val(data.wifi_ssid);
     $('#wifi_password').val(data.wifi_password);
     $('#clock_color').minicolors('value', rgbToHex(data.clock_color));
@@ -341,3 +344,25 @@ function showMessage() {
   });
 }
 
+
+function exportSettings() {
+  // A plain navigation, so the browser's saved login applies and it saves the file.
+  window.location.href = "/config/export";
+}
+
+function importSettings() {
+  const file = $('#importFile')[0].files[0];
+  if (!file) {
+    alert("Choose a settings file first.");
+    return;
+  }
+  if (!confirm(`Replace all settings with ${file.name}? The clock reboots to apply them.`)) return;
+  file.text().then(text => {
+    $.ajax({ url: "/config/import", method: "POST", data: text, contentType: "application/json", processData: false })
+      .done(() => {
+        alert("Settings restored. The clock is rebooting; this page reloads in a few seconds.");
+        setTimeout(() => location.reload(), 12000);
+      })
+      .fail(xhr => alert(`Not restored (${xhr.status}): ${xhr.responseText}`));
+  });
+}

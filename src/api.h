@@ -283,6 +283,30 @@ void setAuth() {
   server.send(200, "text/json", "{\"result\":\"ok\",\"rebooting\":true}");
 }
 
+// Settings backup: a JSON file to keep and upload again after a flash or a
+// board swap. With an admin password set, it holds the secrets in clear text.
+void exportSettings() {
+  String out;
+  serializeJsonPretty(exportConfigDoc(), out);
+  server.sendHeader("Content-Disposition", "attachment; filename=\"sandclock-settings.json\"");
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json", out);
+}
+
+// Body: the exported JSON as is (not a form). Reboots to apply everything,
+// WiFi and the admin password included, the same way their own cards do.
+void importSettings() {
+  const char *err = importConfig(server.arg("plain"));
+  if (err) {
+    server.send(400, "text/plain", String("400: ") + err);
+    return;
+  }
+  Log.noticeln("settings imported");
+  rebootPending = true;
+  rebootAtMs = millis() + 1500;
+  server.send(200, "text/json", "{\"result\":\"ok\",\"rebooting\":true}");
+}
+
 void forceTemp() {
   currentTemp = server.arg("forceTemp").toInt();
   server.send(200, "text/json", "{\"result\":\"ok\"}");
@@ -444,6 +468,8 @@ void setupHandlers() {
   server.on("/config/wifiConfig", HTTP_POST, secured(updateWifiConfig));
   server.on("/config/auth", HTTP_POST, secured(setAuth));
   server.on("/config/timezones", HTTP_POST, secured(setTimezone));
+  server.on("/config/export", HTTP_GET, secured(exportSettings));
+  server.on("/config/import", HTTP_POST, secured(importSettings));
   server.on("/forcetemp", HTTP_POST, secured(forceTemp));
   server.on("/forcetime", HTTP_POST, secured(forceTime));
   server.on("/syncTime", HTTP_GET, secured(syncTime));
@@ -476,6 +502,7 @@ void safePage() {
   html += F(")<br>Last reset: ");
   html += htmlEscape(ESP.getResetInfo());
   html += F("</p><p><a href='/update'>Upload firmware or filesystem</a></p>"
+            "<p><a href='/config/export'>Download the settings</a></p>"
             "<p><a href='/reboot'>Try a normal start</a></p>");
   server.send(200, "text/html", html);
 }
@@ -484,6 +511,7 @@ void setupSafeHandlers() {
   server.on("/", HTTP_GET, secured(safePage));
   server.on("/info", HTTP_GET, secured(getInfo));
   server.on("/config", HTTP_GET, secured(getConfig));
+  server.on("/config/export", HTTP_GET, secured(exportSettings));  // rescue the settings before reflashing
   server.on("/reboot", HTTP_GET, secured(reboot));
   server.onNotFound(captivePortalRedirect);
 }

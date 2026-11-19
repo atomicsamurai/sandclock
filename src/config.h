@@ -2,6 +2,7 @@
 
 #include <EEPROM.h>
 
+#include "config_import.h"
 #include "secrets.h"
 
 void initDefaultConfig() {
@@ -76,14 +77,7 @@ void loadColor(RgbColor &c, JsonVariantConst v) {
 // Applies the saved JSON on top of the defaults, so a key that is missing
 // (older firmware, new setting) or invalid keeps its default instead of
 // becoming 0. Leaves config untouched when the JSON doesn't parse.
-bool applyConfigJson(const char *json) {
-  DynamicJsonDocument doc(2048);
-  auto error = deserializeJson(doc, json);
-  if (error) {
-    Log.errorln("Failed to parse config");
-    return false;
-  }
-
+void applyConfigDoc(JsonDocument &doc) {
   initDefaultConfig();
 
   config.brightness = constrain(doc["brightness"] | (int)config.brightness, 0, 255);
@@ -106,10 +100,17 @@ bool applyConfigJson(const char *json) {
   loadString(config.tzValue, sizeof(config.tzValue), doc["tzValue"]);
   loadString(config.authPassword, sizeof(config.authPassword), doc["authPassword"]);
   loadString(config.apPassword, sizeof(config.apPassword), doc["apPassword"]);
+}
 
-  char buffer[1024];
-  serializeJson(doc, buffer);
-  Log.traceln("Loaded config: %s", buffer);
+bool applyConfigJson(const char *json) {
+  DynamicJsonDocument doc(2048);
+  auto error = deserializeJson(doc, json);
+  if (error) {
+    Log.errorln("Failed to parse config");
+    return false;
+  }
+  applyConfigDoc(doc);
+  Log.traceln("Loaded config");
   return true;
 }
 
@@ -208,4 +209,58 @@ void generateApPassword() {
   }
   config.apPassword[AP_PASSWORD_LENGTH] = 0;
   saveConfig();
+}
+
+// Settings file for download (GET /config/export). Secrets only go in when an
+// admin password protects the download; see config_import.h.
+DynamicJsonDocument exportConfigDoc() {
+  DynamicJsonDocument doc = getConfigDoc(config.authPassword[0] == 0);
+  doc[EXPORT_MARKER] = EXPORT_FORMAT;
+  return doc;
+}
+
+// Replaces the settings with an uploaded export and saves them. Settings the
+// file leaves out get their defaults, except secrets it doesn't carry, which
+// keep their current values. Returns nullptr on success, else why it was
+// refused (the config is then unchanged).
+const char *importConfig(const String &json) {
+  if (json.length() == 0) {
+    return "empty file";
+  }
+  if (json.length() > IMPORT_MAX) {
+    return "file too large for a settings file";
+  }
+  DynamicJsonDocument doc(3072);
+  if (deserializeJson(doc, json)) {
+    return "not valid JSON";
+  }
+  const char *err = checkImport(doc);
+  if (err) {
+    return err;
+  }
+
+  // ~1 KB: on the heap, not the 4 KB stack a web handler runs on
+  std::unique_ptr<ConfigObject> saved(new ConfigObject(config));
+  const ConfigObject &before = *saved;
+  applyConfigDoc(doc);
+  if (importKeepsCurrent(doc["wifi_ssid"])) {
+    strcpy(config.wifi_ssid, before.wifi_ssid);
+  }
+  if (importKeepsCurrent(doc["wifi_password"])) {
+    strcpy(config.wifi_password, before.wifi_password);
+  }
+  if (importKeepsCurrent(doc["hassConfig"]["hassAT"])) {
+    strcpy(config.hassAT, before.hassAT);
+  }
+  if (importKeepsCurrent(doc["apPassword"])) {
+    strcpy(config.apPassword, before.apPassword);
+  }
+  if (importKeepsAuth(doc["authPassword"])) {
+    strcpy(config.authPassword, before.authPassword);
+  }
+  if (!saveConfig()) {
+    config = before;
+    return "could not save the settings";
+  }
+  return nullptr;
 }

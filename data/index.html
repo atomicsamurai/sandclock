@@ -716,6 +716,24 @@
       <br />
       <div class="card">
         <div class="card-body">
+          <div class="form-group">
+            <label>Settings backup</label>
+            <div class="small text-muted">Download every setting as one file, and upload it to restore them after a reflash or onto a new board.</div>
+            <small id="exportNote" class="form-text"></small>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="exportSettings()">Download Settings</button>
+          <hr>
+          <div class="form-group">
+            <label for="importFile">Restore from a file</label>
+            <input type="file" id="importFile" class="form-control-file" accept=".json,application/json">
+            <small class="form-text text-muted">Replaces all settings and reboots the clock. Secrets the file doesn't contain (WiFi password, HA token, passwords) keep their current values.</small>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="importSettings()">Restore Settings</button>
+        </div>
+      </div>
+      <br />
+      <div class="card">
+        <div class="card-body">
           <a class="h5 d-block text-dark mb-0" data-toggle="collapse" href="#deviceInfoBody" role="button"
             aria-expanded="false" aria-controls="deviceInfoBody">Device info <small class="text-muted">(show/hide)</small></a>
           <div class="collapse" id="deviceInfoBody">

@@ -14,6 +14,7 @@ Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED m
 - Automatic brightness from an LDR on `A0`
 - Web UI at `http://sandclock.local` with live previews of the clock face, plus a device info panel
 - Optional password, OTA updates, and settings that survive firmware and filesystem flashes
+- Settings backup: download every setting as one file and restore it after a reflash or onto a new board
 - Status in Home Assistant (light level, WiFi signal, problems, offline alerts) from a ready-made package
 - Diagnostics (WiFi name, IP address, firmware) scrolled on the clock after each boot, or on demand by covering the light sensor (or flashing a light at it) three times
 
@@ -48,6 +49,14 @@ If the clock cannot join WiFi within 20 seconds of boot it opens a WPA2 access p
 The access point password is random (10 characters, no look-alikes such as `0`/`O` or `1`/`I`), created the first time it is needed and stored with the other settings. While nobody has joined, the clock scrolls `AP PW <password>` across the matrix once a minute at a slow, readable pace. It is also shown in the web UI's Security card, where you can generate a new one. While a device is joined to the access point, the clock pauses its WiFi retries (one radio cannot serve both reliably), resuming about ten seconds after the last device leaves. Saving WiFi credentials from the setup page reboots the clock, which then tries the new network before opening the access point again.
 
 Joining phones get a captive-portal redirect: unknown URLs are pointed at `http://192.168.4.1/`, so opening the setup page is usually automatic. `http://sandclock.local` also works while the access point is up.
+
+### Backup and restore
+
+The **Settings backup** card downloads every setting as `sandclock-settings.json` and restores one. Restoring replaces all settings and reboots the clock. A setting missing from the file gets its default, but secrets missing from it (or masked as `******`) keep their current values, so an incomplete file can't wipe your WiFi password.
+
+The file holds the WiFi password, Home Assistant token, admin password and setup password in plain text, but only when an admin password is set (so downloading it needs that password). Without one, the file leaves the secrets out, because anyone on the network could download it. Keep a file with secrets somewhere private.
+
+The file is checked before anything changes: it must be a SandClock settings file (the `/config` and `/info` replies are not), from this or an older firmware, with every text setting short enough to fit. Safe mode also offers the download, to save the settings before you reflash.
 
 ## Safe mode
 
@@ -95,6 +104,8 @@ Use `curl -u admin:PASSWORD` when a password is set. POST bodies are form-encode
 | POST | `/config/timezones` | `tzName`, `tzValue` (POSIX TZ string, for example `MDT6`) |
 | POST | `/config/hassConfig` | `hassBaseUrl`, `hassEntityId`, `hassAT` |
 | POST | `/config/wifiConfig` | `wifi_ssid`, `wifi_password` |
+| GET | `/config/export` | Settings file to keep, with secrets in clear text when a password is set |
+| POST | `/config/import` | Body: a settings file as JSON (`Content-Type: application/json`). Replaces all settings, then reboots |
 | POST | `/config/auth` | `authPassword` (8-31 characters, empty turns auth off) |
 | POST | `/config/ap` | Generate a new setup access point password |
 | POST | `/debug/crash` | `type` `exception` or `wdt`: crash on purpose to test safe mode |
@@ -104,6 +115,12 @@ Use `curl -u admin:PASSWORD` when a password is set. POST bodies are form-encode
 | GET | `/reboot` | Restart |
 | POST | `/forcetemp`, `/forcetime` | Debug: `forceTemp` degrees, `forceTime` epoch in milliseconds. SNTP puts the real time back |
 | GET/POST | `/update` | OTA page. Upload field `firmware` or `filesystem` |
+
+```
+curl -u admin:PASSWORD -o sandclock-settings.json http://sandclock.local/config/export
+curl -u admin:PASSWORD -H 'Content-Type: application/json' --data-binary @sandclock-settings.json \
+     http://sandclock.local/config/import
+```
 
 ```
 curl -u admin:PASSWORD -X POST http://sandclock.local/showmessage \
@@ -166,7 +183,7 @@ automation:
 
 ## Tests and CI
 
-`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI preview draws the same frames as `tools/render.py` (which mirrors `src/display.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, the safe mode decision logic (`src/safe_mode_logic.h`), and the light-sensor gesture (`src/light_gesture_logic.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
+`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI preview draws the same frames as `tools/render.py` (which mirrors `src/display.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, the safe mode decision logic (`src/safe_mode_logic.h`), the light-sensor gesture (`src/light_gesture_logic.h`), and which settings files an import accepts (`src/config_import.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
 
 When you change a layout in `src/display.h`, update `tools/render.py` and `data/js/preview.js` too; the preview test fails if they drift.
 

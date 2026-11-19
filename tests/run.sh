@@ -39,4 +39,9 @@ BIN3="$(mktemp -d)/light_gesture_test"
 ${CXX:-c++} -std=c++17 tests/light_gesture_test.cpp -o "$BIN3"
 "$BIN3"
 
+step "Settings import checks (src/config_import.h)"
+BIN4="$(mktemp -d)/config_import_test"
+${CXX:-c++} -std=c++17 -I"$AJ" tests/config_import_test.cpp -o "$BIN4"
+"$BIN4"
+
 printf '\nall checks passed\n'
