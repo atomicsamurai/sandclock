@@ -1,0 +1,61 @@
+# SandClock status in Home Assistant, read from the clock's /info.
+# Home Assistant polls the clock; no firmware setting is involved.
+#
+# Install as a package (see the README, "Home Assistant"):
+#   1. configuration.yaml:   homeassistant:
+#                              packages: !include_dir_named packages
+#   2. copy this file to     <config>/packages/sandclock.yaml
+#   3. replace CLOCK_IP below with the clock's address (use a DHCP
+#      reservation; .local names do not always resolve in Home Assistant)
+#   4. secrets.yaml:         sandclock_password: <the clock's admin password>
+#      Without password protection on the clock, delete the three
+#      authentication/username/password lines instead.
+#   5. restart Home Assistant
+#
+# When the clock stops answering, every entity below turns "unavailable",
+# which is what an offline alert triggers on (README has an example).
+
+rest:
+  - resource: http://CLOCK_IP/info
+    authentication: basic
+    username: admin
+    password: !secret sandclock_password
+    scan_interval: 30
+    timeout: 10
+    sensor:
+      - name: SandClock light level
+        unique_id: sandclock_light_level
+        # LDR on A0 smoothed over ~20 s: 0 (dark) to 1023 (bright), not lux.
+        # -1 (no reading yet, or safe mode) shows as unknown.
+        value_template: "{{ value_json.lightLevel if value_json.lightLevel >= 0 else none }}"
+        state_class: measurement
+        icon: mdi:brightness-6
+      - name: SandClock WiFi signal
+        unique_id: sandclock_wifi_signal
+        value_template: "{{ value_json.rssi if value_json.wifiConnected else none }}"
+        unit_of_measurement: dBm
+        device_class: signal_strength
+        state_class: measurement
+      - name: SandClock uptime
+        unique_id: sandclock_uptime
+        value_template: "{{ value_json.uptimeSec }}"
+        unit_of_measurement: s
+        device_class: duration
+      - name: SandClock firmware
+        unique_id: sandclock_firmware
+        value_template: "{{ value_json.fwVersion }}"
+        icon: mdi:chip
+    binary_sensor:
+      # device_class problem: "on" means something is wrong
+      - name: SandClock temperature fetch
+        unique_id: sandclock_temperature_fetch_problem
+        value_template: "{{ value_json.haConfigured and not value_json.haOk }}"
+        device_class: problem
+      - name: SandClock time sync
+        unique_id: sandclock_time_sync_problem
+        value_template: "{{ not value_json.timeSynced }}"
+        device_class: problem
+      - name: SandClock safe mode
+        unique_id: sandclock_safe_mode
+        value_template: "{{ value_json.safeMode }}"
+        device_class: problem

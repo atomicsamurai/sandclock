@@ -14,6 +14,7 @@ Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED m
 - Automatic brightness from an LDR on `A0`
 - Web UI at `http://sandclock.local` with live previews of the clock face, plus a device info panel
 - Optional password, OTA updates, and settings that survive firmware and filesystem flashes
+- Status in Home Assistant (light level, WiFi signal, problems, offline alerts) from a ready-made package
 - Diagnostics (WiFi name, IP address, firmware) scrolled on the clock after each boot, or on demand by covering the light sensor (or flashing a light at it) three times
 
 ## Build and flash
@@ -121,6 +122,38 @@ For when the web UI is out of reach (new network, unknown IP address), the clock
 - **On demand**, cover the light sensor with your hand three times in a row, or in a dark room flash a light at it (a phone flashlight) three times. Each cover or flash and each gap should last about a quarter to one second, all within a few seconds. The clock beeps and scrolls the same details plus its uptime, and anything that needs attention (`HA ERR <code>`, `NO TIME`).
 
 Both gestures are measured against the recent light level: a cover has to drop the reading below half, a flash has to at least double it. So covers work wherever there is some light (not below a level of 60), and flashes work in dim and dark rooms. Lights switching on or off, people walking past, headlights, a single shadow and lightning do not trigger them, and mixing covers and flashes in one sequence does not count. After a gesture the sensor is ignored for 10 seconds. `/info` reports `ldrNow` (the live 20 Hz reading) and `gestureBaseline` (the learned light level) for tuning.
+
+## Home Assistant
+
+The clock reads its outdoor temperature from Home Assistant (see the Temperature card). In the other direction, Home Assistant can show the clock's status: [docs/home-assistant/sandclock.yaml](docs/home-assistant/sandclock.yaml) is a ready-made package that polls `/info` every 30 seconds and creates:
+
+| Entity | Meaning |
+| --- | --- |
+| `sensor.sandclock_light_level` | Room light from the LDR, 0 (dark) to 1023 (bright), smoothed over about 20 s |
+| `sensor.sandclock_wifi_signal` | WiFi signal in dBm |
+| `sensor.sandclock_uptime` | Seconds since the last boot |
+| `sensor.sandclock_firmware` | Running firmware version |
+| `binary_sensor.sandclock_temperature_fetch` | On when the temperature fetch from Home Assistant is failing |
+| `binary_sensor.sandclock_time_sync` | On when the clock has no time from NTP |
+| `binary_sensor.sandclock_safe_mode` | On when the clock is in safe mode |
+
+Installation steps are at the top of the file: enable packages, copy the file, put in the clock's IP address (give the clock a DHCP reservation; `.local` names do not always resolve in Home Assistant) and add the clock's admin password to `secrets.yaml`. No firmware setting is involved.
+
+When the clock stops answering, all of these turn `unavailable`. An offline alert, for example:
+
+```yaml
+automation:
+  - alias: SandClock offline
+    triggers:
+      - trigger: state
+        entity_id: sensor.sandclock_uptime
+        to: unavailable
+        for: "00:05:00"
+    actions:
+      - action: notify.notify
+        data:
+          message: The SandClock has not answered for 5 minutes.
+```
 
 ## Tools
 
