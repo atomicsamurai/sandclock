@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 #include <NeoPixelBrightnessBus.h>
 
+#include "date_screen_logic.h"
 #include "light_gesture_logic.h"
 
 /*
@@ -12,7 +13,7 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.14.0"
+#define FW_VERSION "2.15.0"
 
 // Set at build time by tools/git_rev.py (git describe), so /info shows exactly
 // which commit is running.
@@ -37,6 +38,7 @@ struct ConfigObject {
   byte hourFormat;
   byte displayStyle;  // 1 = cycle time/temp (5s/2s), 2 = combined on one screen
   bool chimeEnabled;         // hourly/half-hourly chime
+  bool dateEnabled;          // "THU 19" for 3 s once a minute (date_screen_logic.h)
   bool chimeMuteDark;        // silence automatic beeps (chime, message start/end) when dark
   uint16_t chimeDarkThreshold;  // smoothed light reading (0-1023) below which it is "dark"
   char hassBaseUrl[100];

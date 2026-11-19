@@ -3,7 +3,8 @@
 
 The layouts below mirror showTime/showTemperature/showTemperatureSmall/
 showCombined in src/display.h, and show_message mirrors renderScrollFrame in
-src/scroll.h; update both when one changes.
+src/scroll.h and show_date mirrors showDate (src/scroll.h,
+src/date_screen_logic.h); update both when one changes.
 """
 import argparse
 import os
@@ -76,6 +77,28 @@ def show_message(c, font, text, pos, color):
                 for row in range(7):
                     if bits & (1 << row):
                         c.px[row][x] = color
+
+
+DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+
+
+def show_date(c, font, wday, mday, color):
+    """The date screen: "THU 19" centered, 1-column gaps, a 3-column space.
+    wday 0 = Sunday, as tm_wday."""
+    text = f"{DAYS[wday]} {mday}"
+    width = sum(3 if ch == " " else 6 for ch in text) - 1
+    x = (W - width) // 2
+    for ch in text:
+        if ch == " ":
+            x += 3
+            continue
+        idx = scroll_index(font, ord(ch))
+        for col in range(5):
+            if 0 <= x + col < W:
+                for row in range(7):
+                    if font["cols"][idx][col] & (1 << row):
+                        c.px[row][x + col] = color
+        x += 6
 
 
 class Canvas:
@@ -193,7 +216,7 @@ def temp_arg(s):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("view", nargs="?", default="all",
-                    choices=["time", "temp", "small", "combined", "message", "all"])
+                    choices=["time", "temp", "small", "combined", "message", "date", "all"])
     ap.add_argument("--time", help="HH:MM (default: now)")
     ap.add_argument("--temp", type=temp_arg, default=-15,
                     help="integer degrees, or 'none' for the HA-failure dashes")
@@ -203,6 +226,7 @@ def main():
                     help="r,g,b (firmware default 0,0,255)")
     ap.add_argument("--temp-color", type=rgb, default=(255, 0, 0),
                     help="r,g,b (firmware default 255,0,0)")
+    ap.add_argument("--date", help="YYYY-MM-DD for the date view (default: today)")
     ap.add_argument("--text", default="HELLO", help="message for the message view")
     ap.add_argument("--pos", type=int, default=0,
                     help="message view: x of its first column (the clock starts at 32)")
@@ -229,6 +253,11 @@ def main():
             show_time(c, fonts, h, m, dots, a.clock_color)
         elif v == "temp":
             show_temperature(c, fonts, a.temp, a.temp_color)
+        elif v == "date":
+            import datetime
+            d = datetime.date.fromisoformat(a.date) if a.date else datetime.date.today()
+            show_date(c, load_scroll_font(os.path.join(ROOT, "src", "scroll.h")),
+                      (d.weekday() + 1) % 7, d.day, a.other_color)
         elif v == "message":
             show_message(c, load_scroll_font(os.path.join(ROOT, "src", "scroll.h")),
                          a.text, a.pos, a.other_color)

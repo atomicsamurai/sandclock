@@ -76,6 +76,38 @@ int getCharIndex(char c) {
   return -1;  // characters without a glyph are skipped (still occupy width)
 }
 
+// Static text in the message font, with its first column at x, rows 0-6.
+// Same glyphs and 1-column gaps as a scrolling message; a space is
+// DATE_SPACE_W columns.
+void drawText5x7(int x, const char *s, RgbColor color) {
+  for (; *s; ++s) {
+    if (*s == ' ') {
+      x += DATE_SPACE_W;
+      continue;
+    }
+    int idx = getCharIndex(*s);
+    for (uint8_t col = 0; idx >= 0 && col < 5; col++) {
+      int px = x + col;
+      if (px < 0 || px >= PanelWidth) continue;
+      uint8_t bits = pgm_read_byte(&(font5x7[idx][col]));
+      for (uint8_t row = 0; row < 7; row++) {
+        if (bits & (1 << row)) {
+          strip.SetPixelColor(topo.Map(px, row), color);
+        }
+      }
+    }
+    x += DATE_GLYPH_W + DATE_GAP;
+  }
+}
+
+// The date screen, "THU 19" centered in the message color (see
+// date_screen_logic.h for when it shows).
+void showDate(const struct tm *tm) {
+  char text[8];
+  int x = dateLayout(tm->tm_wday, tm->tm_mday, text);
+  drawText5x7(x, text, config.other_color);
+}
+
 bool scrollActive = false;
 bool scrollSilent = false;  // the running scroll was started with scrollQuiet
 

@@ -158,6 +158,7 @@ function getServerValues() {
     rangeB.value = data.brightness;
     $('#hourFormat').val("" + data.hourFormat);
     $('#displayStyle').val("" + data.displayStyle);
+    $('#dateEnabled').prop("checked", data.dateEnabled !== false);
     $('#chimeEnabled').prop("checked", data.chimeEnabled);
     $('#chimeMuteDark').prop("checked", data.chimeMuteDark);
     $('#chimeDarkThreshold').val(data.chimeDarkThreshold);
@@ -317,7 +318,8 @@ function updateChime() {
 
 function updateDisplayStyle() {
   postSettings("/config/displaystyle", {
-    displayStyle: $('#displayStyle').val()
+    displayStyle: $('#displayStyle').val(),
+    dateEnabled: $('#dateEnabled').prop("checked")
   });
 }
 

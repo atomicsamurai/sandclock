@@ -13,6 +13,7 @@ void initDefaultConfig() {
   config.other_color = RgbColor(255, 0, 0);
   config.hourFormat = 12;
   config.displayStyle = 1;  // default: 5s/2s cycle
+  config.dateEnabled = true;
   config.chimeEnabled = true;
   config.chimeMuteDark = false;
   config.chimeDarkThreshold = 40;
@@ -88,6 +89,7 @@ void applyConfigDoc(JsonDocument &doc) {
 
   config.hourFormat = (doc["hourFormat"] | 12) == 24 ? 24 : 12;
   config.displayStyle = (doc["displayStyle"] | 1) == 2 ? 2 : 1;
+  config.dateEnabled = doc["dateEnabled"] | config.dateEnabled;
   config.chimeEnabled = doc["chimeEnabled"] | config.chimeEnabled;
   config.chimeMuteDark = doc["chimeMuteDark"] | config.chimeMuteDark;
   config.chimeDarkThreshold = constrain(doc["chimeDarkThreshold"] | (int)config.chimeDarkThreshold, 0, 1023);
@@ -147,6 +149,7 @@ DynamicJsonDocument getConfigDoc(bool redact = false) {
 
   doc["hourFormat"] = config.hourFormat;
   doc["displayStyle"] = config.displayStyle;
+  doc["dateEnabled"] = config.dateEnabled;
   doc["chimeEnabled"] = config.chimeEnabled;
   doc["chimeMuteDark"] = config.chimeMuteDark;
   doc["chimeDarkThreshold"] = config.chimeDarkThreshold;

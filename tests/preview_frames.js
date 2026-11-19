@@ -3,6 +3,7 @@
 // browser context.
 // Usage: node preview_frames.js <style> <hourFormat> <h> <m> <temp>
 //        node preview_frames.js message <text> <pos>
+//        node preview_frames.js date <wday> <mday>
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -14,7 +15,9 @@ vm.runInContext(fs.readFileSync(path.join(root, 'data/js/fonts.js'), 'utf8') + '
 vm.runInContext(fs.readFileSync(path.join(root, 'data/js/preview.js'), 'utf8'), ctx);
 
 const ascii = frame => frame.map(r => r.map(c => (c ? '##' : '. ')).join('')).join('\n');
-if (process.argv[2] === 'message') {
+if (process.argv[2] === 'date') {
+  console.log(ascii(ctx.window.ClockPreview.dateFrame(Number(process.argv[3]), Number(process.argv[4]), 'D')));
+} else if (process.argv[2] === 'message') {
   console.log(ascii(ctx.window.ClockPreview.messageFrame(process.argv[3], Number(process.argv[4]), 'M')));
 } else {
   const [style, fmt, h, m, t] = process.argv.slice(2).map(Number);

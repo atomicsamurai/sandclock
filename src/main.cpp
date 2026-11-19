@@ -394,8 +394,13 @@ void loop() {
           warnIfNtpStale();
           refreshTemperatureIfDue();
           clearDisplay();
+          time_t nowSec = time(nullptr);
           if (!timeSynced()) {
             showNoTime();
+          } else if (config.dateEnabled && dateScreenDue(localtime(&nowSec)->tm_sec)) {
+            // once a minute, for a few seconds, in either style; the cycle
+            // below carries on underneath
+            showDate(localtime(&nowSec));
           } else if (config.displayStyle == 2) {
             // combined: time and temperature on one screen, no cycling
             showCombined();

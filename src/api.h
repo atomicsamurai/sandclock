@@ -176,17 +176,22 @@ void setHourFormat() {
 }
 
 void setDisplayStyle() {
-  if(!server.hasArg("displayStyle")) {
+  if (!server.hasArg("displayStyle") && !server.hasArg("dateEnabled")) {
     server.send(400, "text/plain", "400: Invalid Request");
     return;
   }
-  long s = server.arg("displayStyle").toInt();
-  if (s != 1 && s != 2) {
-    server.send(400, "text/plain", "400: displayStyle must be 1 (cycle) or 2 (combined)");
-    return;
+  if (server.hasArg("displayStyle")) {
+    long s = server.arg("displayStyle").toInt();
+    if (s != 1 && s != 2) {
+      server.send(400, "text/plain", "400: displayStyle must be 1 (cycle) or 2 (combined)");
+      return;
+    }
+    config.displayStyle = s;
+    Log.traceln("set display style: %d", s);
   }
-  config.displayStyle = s;
-  Log.traceln("set display style: %d", s);
+  if (server.hasArg("dateEnabled")) {
+    config.dateEnabled = server.arg("dateEnabled") == "true";
+  }
   saveConfig();
   getConfig();
 }

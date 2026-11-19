@@ -1,7 +1,7 @@
 // Preview of the clock face for the Display Style setting, and of a scrolling
 // message as it will run. The layouts mirror showTime/showTemperature/
-// showTemperatureSmall/showCombined in src/display.h and renderScrollFrame in
-// src/scroll.h (and tools/render.py); change them together.
+// showTemperatureSmall/showCombined in src/display.h, and renderScrollFrame
+// and showDate in src/scroll.h (and tools/render.py); change them together.
 (function () {
   const W = 32, H = 8;
   const COLON = 10, DEGREES = 13, MINUS = 14, UB_MINUS = 11;
@@ -131,6 +131,28 @@
     return f;
   }
 
+  // Date screen, as showDate draws it (src/date_screen_logic.h): "THU 19"
+  // centered, 1-column gaps, a 3-column space. wday 0 = Sunday.
+  const DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+  function dateFrame(wday, mday, color) {
+    const f = newFrame(), cols = CLOCK_FONTS.Scroll.cols;
+    const text = `${DAYS[wday]} ${mday}`;
+    let x = Math.floor((W - ([...text].reduce((s, ch) => s + (ch === " " ? 3 : 6), 0) - 1)) / 2);
+    for (const ch of text) {
+      if (ch === " ") { x += 3; continue; }
+      const idx = scrollIndex(ch.charCodeAt(0));
+      for (let col = 0; col < 5; col++) {
+        if (x + col < 0 || x + col >= W) continue;
+        for (let row = 0; row < 7; row++) {
+          if (cols[idx][col] & (1 << row)) f[row][x + col] = color;
+        }
+      }
+      x += 6;
+    }
+    return f;
+  }
+
   // img/panel.jpg is a photo of the real wood front panel with the LEDs off
   // (made by tools/make_panel.py). The LED grid position is measured from it.
   const PANEL = { w: 768, h: 195, x0: 17.2, y0: 25.2, dx: 20.77, dy: 20.56 };
@@ -178,9 +200,12 @@
 
   // Device time advanced by however long this page has been open.
   function sampleTime() {
-    if (state.baseMs === null) return { h: 10, m: 8 };
+    if (state.baseMs === null) {
+      const today = new Date();
+      return { h: 10, m: 8, wday: today.getDay(), mday: today.getDate() };
+    }
     const d = new Date(state.baseMs + (Date.now() - state.loadedAt));
-    return { h: d.getUTCHours(), m: d.getUTCMinutes() };
+    return { h: d.getUTCHours(), m: d.getUTCMinutes(), wday: d.getUTCDay(), mday: d.getUTCDate() };
   }
 
   function update() {
@@ -201,13 +226,17 @@
       });
     }
 
-    if (state.shown !== style) {
+    const withDate = $("#dateEnabled").prop("checked");
+    if (withDate) list.push({ label: "Date (3 s once a minute, message color)", frame: dateFrame(t.wday, t.mday, messageColor()) });
+
+    const shape = `${style}/${list.length}`;
+    if (state.shown !== shape) {
       $box.empty();
       list.forEach(() => {
         $box.append($('<div class="small text-muted mt-2 preview-label">'))
             .append($('<canvas class="w-100" style="max-width:480px;border-radius:6px" width="' + PANEL.w + '" height="' + PANEL.h + '">'));
       });
-      state.shown = style;
+      state.shown = shape;
     }
     const labels = $box.find(".preview-label"), canvases = $box.find("canvas");
     list.forEach((item, i) => {
@@ -306,12 +335,12 @@
       if (typeof i.temperature === "number") state.temp = i.temperature;
       update();
     });
-    $("#displayStyle, #hourFormat").on("change", update);
+    $("#displayStyle, #hourFormat, #dateEnabled").on("change", update);
     $("#messageText, #scrollDelay, #repeatCount").on("input", restartMessage);
     restartMessage();
     setInterval(() => { state.dots = !state.dots; update(); }, 1000);
   }
 
-  window.ClockPreview = { update, init, frames, messageFrame, messageInfo };
+  window.ClockPreview = { update, init, frames, messageFrame, messageInfo, dateFrame };
   $(init);
 })();
