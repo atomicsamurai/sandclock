@@ -7,13 +7,14 @@
 
 #include "date_screen_logic.h"
 #include "light_gesture_logic.h"
+#include "message_queue_logic.h"
 
 /*
  * Firmware version. Bump on every behavior-changing release; the UI shows it
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.15.0"
+#define FW_VERSION "2.16.0"
 
 // Set at build time by tools/git_rev.py (git describe), so /info shows exactly
 // which commit is running.
@@ -69,12 +70,13 @@ const unsigned long TIME_SCREEN_MS = 5000;
 const unsigned long TEMP_SCREEN_MS = 2000;
 unsigned long screenStartMs = 0;
 
-// ---- Scroll message state (set by /showmessage, driven by scroll.h) -------
-int showingMessage = 0;
-char messageText[128] = "";
-uint16_t messageScrollDelayMs = 50;  // defaults until /showmessage sets them
+// ---- Scroll message state (queued by /showmessage, driven by scroll.h) ----
+MessageQueue messageQueue;           // waiting messages; loop() starts the next when idle
+bool scrollInterrupt = false;        // cut the running scroll short (diagnostics)
+char messageText[MESSAGE_TEXT_SIZE] = "";  // the message scrolling now
+uint16_t messageScrollDelayMs = 50;
 uint16_t messageRepeatCount = 1;
-bool scrollQuiet = false;            // next scroll skips its start/end beeps (system announcements)
+bool scrollQuiet = false;            // the next scroll skips its start/end beeps
 
 // ---- Timing counters (millis() based) --------------------------------------
 unsigned long prevTime = 0;              // 1s clock/temp tick

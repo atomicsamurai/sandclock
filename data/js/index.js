@@ -339,11 +339,13 @@ function sethassConfig() {
 }
 
 function showMessage() {
-  postSettings("/showmessage", {
+  $.post("/showmessage", {
     messageText: $('#messageText').val(),
     scrollDelay: $('#scrollDelay').val(),
     repeatCount: $('#repeatCount').val()
-  });
+  })
+    .done(resp => console.log("/showmessage: ok", resp))
+    .fail(xhr => alert(`Not sent (${xhr.status}): ${xhr.responseText}`));
 }
 
 

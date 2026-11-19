@@ -359,11 +359,12 @@ void showMessage() {
   }
 
   Log.traceln("show message: %s, repeat: %d, delay: %d", server.arg("messageText").c_str(), repeat, scrollDelay);
-  strlcpy(messageText, server.arg("messageText").c_str(), sizeof(messageText));
-  messageScrollDelayMs = scrollDelay;
-  messageRepeatCount = repeat;
-  showingMessage = 1;  // set last: loop() only sees a fully prepared message
-  server.send(200, "text/json", "{\"result\":\"ok\"}");
+  // Queued behind any message already scrolling or waiting.
+  if (!messageQueue.push(server.arg("messageText").c_str(), scrollDelay, repeat)) {
+    server.send(503, "text/plain", "503: message queue full, try again when the current messages have scrolled");
+    return;
+  }
+  server.send(200, "text/json", String("{\"result\":\"ok\",\"queued\":") + messageQueue.count + "}");
 }
 
 void getInfo() {
@@ -411,6 +412,8 @@ void getInfo() {
   doc["ldrNow"] = ldrNow;                          // 20 Hz sample used by the light gesture
   doc["gestureBaseline"] = lightGesture.baseline;  // its learned light level (covers off below 60)
   doc["buzzerMuted"] = buzzerMutedByDark();
+  doc["messageScrolling"] = scrollActive;
+  doc["messagesQueued"] = messageQueue.count;
   doc["chimeEnabled"] = config.chimeEnabled;
 
   doc["uptimeSec"] = millis() / 1000;

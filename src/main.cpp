@@ -159,7 +159,7 @@ const unsigned long AP_ANNOUNCE_MS = 60000;
 unsigned long lastApAnnounceMs = 0;
 
 void announceApPassword() {
-  if (safeMode || !apActive || scrollActive || showingMessage != 0 || WiFi.softAPgetStationNum () > 0) {
+  if (safeMode || !apActive || scrollActive || !messageQueue.empty () || WiFi.softAPgetStationNum () > 0) {
     return;
   }
   unsigned long now = millis ();
@@ -167,11 +167,9 @@ void announceApPassword() {
     return;
   }
   lastApAnnounceMs = now ? now : 1;
-  snprintf (messageText, sizeof (messageText), "AP PW %s", config.apPassword);
-  messageScrollDelayMs = 150;  // slow: the password has to be read off the LEDs
-  messageRepeatCount = 1;
-  scrollQuiet = true;
-  showingMessage = 1;  // loop() starts the scroll
+  char text[32];
+  snprintf (text, sizeof (text), "AP PW %s", config.apPassword);
+  messageQueue.push (text, 150, 1, true);  // slow: the password has to be read off the LEDs
 }
 
 // On-clock diagnostics, for when the web UI is out of reach: scrolled once
@@ -203,22 +201,23 @@ void showDiagnostics(bool atBoot) {
     }
   }
   const char *timeState = atBoot || timeSynced () ? "" : "  NO TIME";
+  char text[MESSAGE_TEXT_SIZE];
   if (WiFi.status () == WL_CONNECTED) {
-    snprintf (messageText, sizeof (messageText), "WIFI %s  IP %s  FW %s%s%s%s",
+    snprintf (text, sizeof (text), "WIFI %s  IP %s  FW %s%s%s%s",
               WiFi.SSID ().c_str (), WiFi.localIP ().toString ().c_str (), FW_VERSION, up, ha, timeState);
   } else if (apActive) {
-    snprintf (messageText, sizeof (messageText), "NO WIFI %s  AP SANDCLOCK PW %s  IP %s  FW %s",
+    snprintf (text, sizeof (text), "NO WIFI %s  AP SANDCLOCK PW %s  IP %s  FW %s",
               config.wifi_ssid, config.apPassword, WiFi.softAPIP ().toString ().c_str (), FW_VERSION);
     lastApAnnounceMs = millis () ? millis () : 1;  // the AP password was just shown
   } else {
-    snprintf (messageText, sizeof (messageText), "NO WIFI %s  FW %s%s",
+    snprintf (text, sizeof (text), "NO WIFI %s  FW %s%s",
               config.wifi_ssid, FW_VERSION, up);
   }
-  Log.noticeln ("Diagnostics: %s", messageText);
-  messageScrollDelayMs = DIAG_SCROLL_MS;
-  messageRepeatCount = 1;
-  scrollQuiet = atBoot;
-  showingMessage = 1;  // loop() starts the scroll (replacing any running one)
+  Log.noticeln ("Diagnostics: %s", text);
+  // Next in line, and cut short whatever is scrolling: someone is waiting
+  // for it. Queued messages follow afterwards.
+  messageQueue.pushFront (text, DIAG_SCROLL_MS, 1, atBoot);
+  scrollInterrupt = true;
 }
 
 // Samples the LDR at 20 Hz for the light gesture (light_gesture_logic.h).
@@ -377,8 +376,16 @@ void loop() {
     prevTimeBrightness = currentMillis;
     handleBrightness();
   }
-  if (showingMessage != 0) {  // /showmessage arrived: start a non-blocking scroll
-    showingMessage = 0;
+  if (scrollInterrupt) {
+    scrollInterrupt = false;
+    scrollActive = false;  // the next message takes over the matrix at once
+  }
+  QueuedMessage next;
+  if (!scrollActive && messageQueue.pop(next)) {  // start the next non-blocking scroll
+    memcpy(messageText, next.text, sizeof(messageText));
+    messageScrollDelayMs = next.delayMs;
+    messageRepeatCount = next.repeat;
+    scrollQuiet = next.quiet;
     beginMessageScroll();
   }
   tickScroll();

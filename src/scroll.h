@@ -4,9 +4,10 @@
 
 /*
  * Non-blocking scrolling text for the matrix. An external app triggers it
- * via POST /showmessage (see api.h): the handler fills messageText /
- * messageScrollDelayMs / messageRepeatCount and sets showingMessage, and
- * loop() starts the scroll. tickScroll() advances one column per step from
+ * via POST /showmessage (see api.h), which adds it to messageQueue
+ * (message_queue_logic.h); loop() takes the next queued message into
+ * messageText / messageScrollDelayMs / messageRepeatCount when no scroll is
+ * running and starts it. tickScroll() advances one column per step from
  * loop(), so the web server, chime and brightness stay live while text
  * scrolls. When the scroll ends the clock redraws immediately.
  *
@@ -171,7 +172,7 @@ void tickScroll() {
   }
 }
 
-// Called from loop() when showingMessage is set by /showmessage.
+// Called from loop() with the next queued message in messageText.
 void beginMessageScroll() {
   scrollTotalWidth = strlen(messageText) * 6 - 1;  // 5px glyph + 1px spacing
   scrollPos = PanelWidth;                          // enter from the right edge

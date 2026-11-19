@@ -1,15 +1,16 @@
-# SandClock status in Home Assistant, read from the clock's /info.
-# Home Assistant polls the clock; no firmware setting is involved.
+# SandClock in Home Assistant: its status, read from the clock's /info, and
+# an action that scrolls a message across it (POST /showmessage).
+# No firmware setting is involved.
 #
 # Install as a package (see the README, "Home Assistant"):
 #   1. configuration.yaml:   homeassistant:
 #                              packages: !include_dir_named packages
 #   2. copy this file to     <config>/packages/sandclock.yaml
-#   3. replace CLOCK_IP below with the clock's address (use a DHCP
+#   3. replace CLOCK_IP below (twice) with the clock's address (use a DHCP
 #      reservation; .local names do not always resolve in Home Assistant)
 #   4. secrets.yaml:         sandclock_password: <the clock's admin password>
-#      Without password protection on the clock, delete the three
-#      authentication/username/password lines instead.
+#      Without password protection on the clock, delete the
+#      authentication/username/password lines (both places) instead.
 #   5. restart Home Assistant
 #
 # When the clock stops answering, every entity below turns "unavailable",
@@ -59,3 +60,58 @@ rest:
         unique_id: sandclock_safe_mode
         value_template: "{{ value_json.safeMode }}"
         device_class: problem
+
+# Scroll a message on the clock from an automation or script:
+#   action: script.sandclock_message
+#   data:
+#     message: Washer done
+# The clock draws letters (as capitals), digits and - : . _ ; anything else
+# is a gap. Up to 127 characters. It beeps before and after, unless "mute
+# when dark" is on and the room is dark.
+rest_command:
+  sandclock_message:
+    url: http://CLOCK_IP/showmessage
+    method: post
+    username: admin
+    password: !secret sandclock_password
+    content_type: application/x-www-form-urlencoded
+    payload: >-
+      messageText={{ message | string | urlencode }}&repeatCount={{ repeat | default(1) | int }}&scrollDelay={{ delay | default(60) | int }}
+    timeout: 10
+
+# The same with a form in the UI (Settings > Automations & scenes > Scripts)
+# and in the automation editor's action picker.
+script:
+  sandclock_message:
+    alias: SandClock message
+    icon: mdi:message-text
+    mode: queued
+    fields:
+      message:
+        description: "Text to scroll (letters, digits and - : . _)"
+        required: true
+        example: Washer done
+        selector:
+          text:
+      repeat:
+        description: How many times it scrolls past
+        default: 1
+        selector:
+          number:
+            min: 1
+            max: 10
+            mode: box
+      delay:
+        description: Milliseconds per column (lower is faster)
+        default: 60
+        selector:
+          number:
+            min: 20
+            max: 300
+            mode: box
+    sequence:
+      - action: rest_command.sandclock_message
+        data:
+          message: "{{ message }}"
+          repeat: "{{ repeat | default(1) }}"
+          delay: "{{ delay | default(60) }}"

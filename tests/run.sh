@@ -44,6 +44,11 @@ BIN5="$(mktemp -d)/date_screen_test"
 ${CXX:-c++} -std=c++17 tests/date_screen_test.cpp -o "$BIN5"
 "$BIN5"
 
+step "Message queue (src/message_queue_logic.h)"
+BIN6="$(mktemp -d)/message_queue_test"
+${CXX:-c++} -std=c++17 tests/message_queue_test.cpp -o "$BIN6"
+"$BIN6"
+
 step "Settings import checks (src/config_import.h)"
 BIN4="$(mktemp -d)/config_import_test"
 ${CXX:-c++} -std=c++17 -I"$AJ" tests/config_import_test.cpp -o "$BIN4"

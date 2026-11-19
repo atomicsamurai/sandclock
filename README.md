@@ -10,13 +10,13 @@ Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED m
 - Time from NTP with POSIX timezone and DST rules, shown until synced as `--:--`
 - Outdoor temperature from a Home Assistant sensor, with a cycle (time 5 s, temperature 2 s) or combined display
 - The date (`THU 19`) for 3 seconds once a minute, at half past the minute, in the message color (can be turned off)
-- Scrolling messages from the web UI or the HTTP API, with a live preview of how the text will scroll, how long it takes and which characters the clock can't draw
+- Scrolling messages from the web UI, the HTTP API or Home Assistant, queued so back-to-back messages each get shown, with a live preview of how the text will scroll, how long it takes and which characters the clock can't draw
 - Hourly and half-hourly chime, optionally muted when the light sensor says it is dark
 - Automatic brightness from an LDR on `A0`
 - Web UI at `http://sandclock.local` with live previews of the clock face, plus a device info panel
 - Optional password, OTA updates, and settings that survive firmware and filesystem flashes
 - Settings backup: download every setting as one file and restore it after a reflash or onto a new board
-- Status in Home Assistant (light level, WiFi signal, problems, offline alerts) from a ready-made package
+- Status in Home Assistant (light level, WiFi signal, problems, offline alerts) and messages from Home Assistant automations, from a ready-made package
 - Diagnostics (WiFi name, IP address, firmware) scrolled on the clock after each boot, or on demand by covering the light sensor (or flashing a light at it) three times
 
 ## Build and flash
@@ -94,7 +94,7 @@ Use `curl -u admin:PASSWORD` when a password is set. POST bodies are form-encode
 
 | Method | Path | Parameters |
 | --- | --- | --- |
-| GET | `/info` | Runtime status: network, time, NTP, Home Assistant, light, memory, flash |
+| GET | `/info` | Runtime status: network, time, NTP, Home Assistant, light, messages (`messageScrolling`, `messagesQueued`), memory, flash |
 | GET | `/config` | Settings (the WiFi password and HA token are masked) |
 | POST | `/config/clockcolor`, `/config/tempcolor`, `/config/othercolor` | `r`, `g`, `b` (0-255). `othercolor` is the scrolling message color |
 | POST | `/config/brightness` | `brightness` 0-255 |
@@ -110,7 +110,7 @@ Use `curl -u admin:PASSWORD` when a password is set. POST bodies are form-encode
 | POST | `/config/auth` | `authPassword` (8-31 characters, empty turns auth off) |
 | POST | `/config/ap` | Generate a new setup access point password |
 | POST | `/debug/crash` | `type` `exception` or `wdt`: crash on purpose to test safe mode |
-| POST | `/showmessage` | `messageText` (up to 127 bytes; letters show in upper case, digits and `- : . _` are drawn, anything else is a gap), optional `repeatCount` 1-100, `scrollDelay` 10-1000 ms per column |
+| POST | `/showmessage` | `messageText` (up to 127 bytes; letters show in upper case, digits and `- : . _` are drawn, anything else is a gap), optional `repeatCount` 1-100, `scrollDelay` 10-1000 ms per column. Queued behind a running message (up to 4 waiting; 503 when full), reply `{"result":"ok","queued":n}` |
 | POST | `/sound` | `type` `single` or `double` |
 | GET | `/syncTime` | Restart NTP and sync now |
 | GET | `/reboot` | Restart |
@@ -173,6 +173,48 @@ automation:
           message: The SandClock has not answered for 5 minutes.
 ```
 
+### Messages from Home Assistant
+
+The package also adds `script.sandclock_message` (and the `rest_command.sandclock_message` behind it), which scrolls text across the clock. Use it from any automation, or run it from the Scripts page to try it. It takes `message`, and optionally `repeat` (passes, default 1) and `delay` (ms per column, default 60). The clock draws letters (as capitals), digits and `- : . _`; anything else becomes a gap, so keep messages to those. Messages are up to 127 characters.
+
+```yaml
+automation:
+  - alias: SandClock - washer done
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.washer_power
+        below: 3
+        for: "00:02:00"
+    actions:
+      - action: script.sandclock_message
+        data:
+          message: Washer done
+          repeat: 2
+
+  - alias: SandClock - door left open
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.back_door
+        to: "on"
+        for: "00:10:00"
+    actions:
+      - action: script.sandclock_message
+        data:
+          message: Back door open
+
+  - alias: SandClock - rain coming
+    triggers:
+      - trigger: state
+        entity_id: weather.home
+        to: rainy
+    actions:
+      - action: script.sandclock_message
+        data:
+          message: "Rain - {{ state_attr('weather.home', 'temperature') | round }} C"
+```
+
+The entity IDs are examples; use your own. The clock beeps before and after each message unless "mute when dark" is on and the room is dark. A message that arrives while another is scrolling waits its turn (up to 4 queued).
+
 ## Tools
 
 | File | Purpose |
@@ -214,8 +256,3 @@ Most files can be printed with 0.3 setting and low infill.
 ### Schema
 
 Connect D6 from the ESP8266 through a 10 ohm resistor to the data pin of the LED strip. Connect the RTC to gnd, vcc and connect SDA and SCLK to the ESP8266 (check the pin layout of the ESP board you are using). Don't power the LED strip from the ESP board but use a Micro USB breakout board en connect the 5V to the LED strip.
-
-### YouTube video
-
-<a href="https://youtu.be/tGhew6kTAwc" target="_blank"><img src="https://img.youtube.com/vi/tGhew6kTAwc/0.jpg" 
-alt="Click to view: 7 Segment Digital Clock V2" width="500" border="1" /></a>
