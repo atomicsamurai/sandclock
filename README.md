@@ -1,6 +1,6 @@
 # Matrix Clock (SandClock)
 
-Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED matrix. It is based on the 7-Segment-Digital-Clock-V2 project; the original build notes are kept at the end.
+Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED matrix. It started from the 7-Segment-Digital-Clock-V2 project; the hardware is now different, see [Hardware](#hardware).
 
 <p>
   <img src="docs/clock-time.jpg" width="49%" alt="The clock showing 8:00 in red through a wood front panel">
@@ -18,6 +18,59 @@ Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED m
 - Settings backup: download every setting as one file and restore it after a reflash or onto a new board
 - Status in Home Assistant (light level, WiFi signal, problems, offline alerts) and messages from Home Assistant automations, from a ready-made package
 - Diagnostics (WiFi name, IP address, firmware) scrolled on the clock after each boot, or on demand by covering the light sensor (or flashing a light at it) three times
+
+## Hardware
+
+![Wiring: the USB adapter's 5 V feeds the matrix and the D1 mini; the matrix's data input is on the D1 mini's RX pin, the light sensor on A0 and the buzzer on D7](docs/wiring.svg)
+
+Items marked **TBD** are not documented yet.
+
+### Parts
+
+| Part | Used here | Notes |
+| --- | --- | --- |
+| Controller | WeMos D1 mini (ESP8266, 4 MB flash) | `board = d1_mini` in `platformio.ini` |
+| LED matrix | [BTF-LIGHTING WS2812B 8x32 panel](https://www.aliexpress.com/item/32944813367.html), 256 LEDs, 5 V | Flexible PCB. The firmware expects GRB colour order at 800 kHz, which is what WS2812B uses |
+| Light sensor | Generic LDR plus a fixed resistor (**TBD** value; 10 kΩ is typical) | Divider on `A0` |
+| Buzzer | Passive piezo buzzer | Driven with `tone()` on `D7` at 587 and 659 Hz. A passive buzzer is needed: an active one would only click or buzz at one pitch |
+| Power | [Pofesun dual USB wall charger](https://www.amazon.ca/dp/B087FRRMQS), 5 V, 3 A total | The adapter feeds the matrix and the D1 mini's `5V` pin directly, so the LED current does not pass through the D1 mini |
+| Body | Milled from a single piece of pine lumber, 380 × 100 mm, the LEDs shining through about 1 mm of pine | Design and milling notes in [`hardware/`](hardware/README.md). **TBD**: depths, milling parameters |
+
+There is no real-time clock chip: the time comes from NTP. (The "RTC" in the code is the ESP8266's own RTC memory, used to count crashes for safe mode.)
+
+### Pins
+
+| D1 mini pin | GPIO | Connects to |
+| --- | --- | --- |
+| `RX` | GPIO3 | Matrix `DIN`. The firmware uses NeoPixelBus's DMA method (`Neo800KbpsMethod`), which on the ESP8266 can only output on this pin. Any other pin leaves the matrix dark |
+| `A0` | ADC | Light sensor divider: LDR from `3V3` to `A0`, fixed resistor from `A0` to `GND`, so more light gives a higher reading. The D1 mini scales `A0`'s 0-3.2 V range to 0-1023 |
+| `D7` | GPIO13 | Buzzer, other leg to `GND` |
+| `5V` | | 5 V from the adapter, shared with the matrix |
+| `GND` | | Common ground with the matrix and the adapter |
+
+Data line extras (**TBD**: whether this build has them): a 220-470 Ω resistor in series with `DIN` near the matrix, and a 470-1000 µF capacitor across the matrix's 5 V and GND. Both are common good practice for WS2812B and cost nothing to add.
+
+### Matrix orientation
+
+Seen from the front, the data enters at the **bottom-right** LED. The chain runs up the rightmost column, down the next one to its left, and so on in a zig-zag, ending at the top-left or bottom-left (`ColumnMajorAlternating180Layout` in `src/vars.h`). A panel mounted the other way up shows everything upside down and mirrored. Change the layout in `src/vars.h` instead of rewiring.
+
+### Power
+
+A WS2812B LED draws up to about 20 mA per colour channel at full brightness, so about 60 mA for white. Most screens light far fewer than all 256:
+
+| Screen | Most LEDs lit |
+| --- | --- |
+| Time (`10:08`) | 128 |
+| Time and temperature combined | 84 |
+| Date (`THU 19`) | 82 |
+| Temperature | 72 |
+| Scrolling message | about 100 |
+
+With a single-channel colour (pure red, green or blue), even the time screen at full brightness needs about 2.6 A. The idle current of 256 LEDs and the D1 mini adds a few hundred mA. That fits a 3 A adapter, if only just. White, or any colour mixing all three channels, at full brightness would need about 7.7 A. Keep the brightness down for such colours, or leave auto brightness on: it runs from 15 to 230 of 255. The 3 A is the total for both of the adapter's ports, so don't charge a phone from the second one.
+
+### Flashing over USB
+
+The matrix's data line shares the `RX` pin with the USB serial port. A USB upload can briefly light random LEDs, which is harmless. If the upload fails to connect, unplug the matrix's data wire while flashing. After the first flash, use `tools/deploy.sh` (over WiFi), which avoids the issue. Serial logging still works, since it only uses `TX`.
 
 ## Build and flash
 
@@ -233,26 +286,3 @@ When you change a layout in `src/display.h`, update `tools/render.py` and `data/
 ## License
 
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
-
-## Upstream hardware notes (7-Segment-Digital-Clock-V2)
-
-These come from the original project. This matrix build uses the pins defined in `src/vars.h` (LDR on `A0`, buzzer on `D7`) and the LED setup in `src/main.cpp`.
-
-### Components
-
-| Components                    | x     |
-| -------------                 | ----- |
-|ESP8266 WeMos Mini D1          | 1x    |
-|DS3231 RTC                     | 1x    |
-|Micro USB Breakout board       | 1x    |
-|Micro USB cable                | 1x    |
-|5V 2.5A power supply           | 1x    |
-|WS2812B LED Strip 60 LED's per meter     | 2x    |
-
-### 3D Printing
-
-Most files can be printed with 0.3 setting and low infill.
-
-### Schema
-
-Connect D6 from the ESP8266 through a 10 ohm resistor to the data pin of the LED strip. Connect the RTC to gnd, vcc and connect SDA and SCLK to the ESP8266 (check the pin layout of the ESP board you are using). Don't power the LED strip from the ESP board but use a Micro USB breakout board en connect the 5V to the LED strip.

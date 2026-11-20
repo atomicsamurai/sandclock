@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 540" width="980" height="540" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <!-- SandClock wiring. Pins from src/vars.h (A0, D7) and the NeoPixelBus DMA
+       method (RX/GPIO3); layout ColumnMajorAlternating180Layout. Items marked
+       TBD are not confirmed for this build. -->
+  <title>SandClock wiring</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2ca02c"/>
+    </marker>
+    <marker id="light" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e69500"/>
+    </marker>
+  </defs>
+  <rect width="980" height="540" fill="#ffffff"/>
+
+  <!-- rails -->
+  <line x1="100" y1="190" x2="895" y2="190" stroke="#d62728" stroke-width="3"/>
+  <text x="108" y="182" fill="#d62728" font-weight="bold">5 V</text>
+  <line x1="100" y1="490" x2="920" y2="490" stroke="#222" stroke-width="3"/>
+  <text x="108" y="510" fill="#222" font-weight="bold">GND</text>
+
+  <!-- USB adapter -->
+  <rect x="40" y="260" width="140" height="100" rx="8" fill="#f4f4f4" stroke="#555" stroke-width="1.5"/>
+  <text x="110" y="292" text-anchor="middle" font-weight="bold">USB adapter</text>
+  <text x="110" y="312" text-anchor="middle">5 V, 3 A total</text>
+  <text x="110" y="330" text-anchor="middle" font-size="11" fill="#555">(Pofesun dual USB)</text>
+  <line x1="100" y1="260" x2="100" y2="190" stroke="#d62728" stroke-width="3"/>
+  <line x1="100" y1="360" x2="100" y2="490" stroke="#222" stroke-width="3"/>
+  <circle cx="100" cy="190" r="4.5" fill="#d62728"/>
+  <circle cx="100" cy="490" r="4.5" fill="#222"/>
+
+  <!-- D1 mini -->
+  <rect x="340" y="220" width="190" height="230" rx="8" fill="#e8f0fb" stroke="#1f4e8c" stroke-width="1.5"/>
+  <text x="435" y="248" text-anchor="middle" font-weight="bold">WeMos D1 mini</text>
+  <text x="435" y="266" text-anchor="middle" font-size="11" fill="#555">ESP8266</text>
+  <!-- right pins -->
+  <text x="520" y="304" text-anchor="end">5V</text>
+  <text x="520" y="344" text-anchor="end">RX (GPIO3)</text>
+  <text x="520" y="384" text-anchor="end">GND</text>
+  <!-- left pins -->
+  <text x="350" y="344">3V3</text>
+  <text x="350" y="384">A0</text>
+  <text x="350" y="424">D7 (GPIO13)</text>
+
+  <!-- D1 5V and GND to rails -->
+  <polyline points="530,300 565,300 565,190" fill="none" stroke="#d62728" stroke-width="3"/>
+  <circle cx="565" cy="190" r="4.5" fill="#d62728"/>
+  <polyline points="530,380 585,380 585,490" fill="none" stroke="#222" stroke-width="3"/>
+  <circle cx="585" cy="490" r="4.5" fill="#222"/>
+
+  <!-- data line, RX to DIN, hopping over the 5 V rail -->
+  <polyline points="530,340 700,340" fill="none" stroke="#2ca02c" stroke-width="3"/>
+  <polyline points="700,340 706,330 718,350 730,330 742,350 754,330 760,340" fill="none" stroke="#2ca02c" stroke-width="2.5"/>
+  <text x="730" y="318" text-anchor="middle" font-size="11" fill="#2ca02c">220-470 Ω (optional, TBD)</text>
+  <polyline points="760,340 870,340 870,200" fill="none" stroke="#2ca02c" stroke-width="3"/>
+  <path d="M870,200 A10,10 0 0 0 870,180" fill="none" stroke="#2ca02c" stroke-width="3"/>
+  <line x1="870" y1="180" x2="870" y2="150" stroke="#2ca02c" stroke-width="3"/>
+
+  <!-- matrix power leads -->
+  <line x1="895" y1="190" x2="895" y2="150" stroke="#d62728" stroke-width="3"/>
+  <circle cx="895" cy="190" r="4.5" fill="#d62728"/>
+  <line x1="920" y1="150" x2="920" y2="490" stroke="#222" stroke-width="3"/>
+  <circle cx="920" cy="490" r="4.5" fill="#222"/>
+  <text x="864" y="168" text-anchor="end" font-size="11" fill="#2ca02c">DIN, enters at LED 0 (bottom-right)</text>
+  <text x="926" y="232" font-size="11" fill="#222">GND</text>
+  <text x="905" y="452" text-anchor="end" font-size="11" fill="#555">Optional, TBD: 470-1000 µF capacitor</text>
+  <text x="905" y="467" text-anchor="end" font-size="11" fill="#555">across 5V and GND at the matrix</text>
+
+  <!-- matrix, seen from the front -->
+  <rect x="600" y="20" width="350" height="130" rx="6" fill="#1b1b1b" stroke="#555" stroke-width="1.5"/>
+  <!-- 32 x 8 LEDs, 10 px pitch: each row is a dotted line -->
+  <g stroke="#555" stroke-width="5" stroke-dasharray="0.01 10" stroke-linecap="round">
+    <line x1="615" y1="45" x2="925" y2="45"/>
+    <line x1="615" y1="55" x2="925" y2="55"/>
+    <line x1="615" y1="65" x2="925" y2="65"/>
+    <line x1="615" y1="75" x2="925" y2="75"/>
+    <line x1="615" y1="85" x2="925" y2="85"/>
+    <line x1="615" y1="95" x2="925" y2="95"/>
+    <line x1="615" y1="105" x2="925" y2="105"/>
+    <line x1="615" y1="115" x2="925" y2="115"/>
+  </g>
+  <!-- chain direction from LED 0 -->
+  <polyline points="925,115 925,45 915,45 915,115 905,115 905,80" fill="none" stroke="#2ca02c" stroke-width="2" marker-end="url(#arrow)"/>
+  <circle cx="925" cy="115" r="6" fill="none" stroke="#2ca02c" stroke-width="2"/>
+  <text x="775" y="138" text-anchor="middle" fill="#ddd" font-size="12">8x32 WS2812B (BTF-LIGHTING), seen from the front</text>
+
+  <!-- light sensor divider -->
+  <polyline points="340,340 240,340 240,346" fill="none" stroke="#1f77b4" stroke-width="2.5"/>
+  <rect x="230" y="346" width="20" height="28" rx="3" fill="#fff" stroke="#1f77b4" stroke-width="2"/>
+  <line x1="196" y1="344" x2="224" y2="354" stroke="#e69500" stroke-width="2" marker-end="url(#light)"/>
+  <line x1="196" y1="356" x2="224" y2="366" stroke="#e69500" stroke-width="2" marker-end="url(#light)"/>
+  <text x="190" y="374" text-anchor="end" font-size="11">LDR</text>
+  <line x1="240" y1="374" x2="240" y2="380" stroke="#1f77b4" stroke-width="2.5"/>
+  <circle cx="240" cy="380" r="4" fill="#1f77b4"/>
+  <line x1="240" y1="380" x2="340" y2="380" stroke="#1f77b4" stroke-width="2.5"/>
+  <polyline points="240,380 240,420 232,426 248,438 232,450 248,462 240,468 240,490" fill="none" stroke="#1f77b4" stroke-width="2.5"/>
+  <text x="226" y="440" text-anchor="end" font-size="11">fixed resistor</text>
+  <text x="226" y="454" text-anchor="end" font-size="11">(TBD, 10 kΩ typical)</text>
+  <circle cx="240" cy="490" r="4.5" fill="#222"/>
+
+  <!-- buzzer -->
+  <polyline points="340,420 300,420 300,440" fill="none" stroke="#9467bd" stroke-width="2.5"/>
+  <circle cx="300" cy="455" r="15" fill="#fff" stroke="#9467bd" stroke-width="2"/>
+  <text x="300" y="459" text-anchor="middle" font-size="10" fill="#9467bd">BZ</text>
+  <line x1="300" y1="470" x2="300" y2="490" stroke="#9467bd" stroke-width="2.5"/>
+  <circle cx="300" cy="490" r="4.5" fill="#222"/>
+  <text x="320" y="478" font-size="11" fill="#9467bd">passive buzzer</text>
+
+  <!-- notes -->
+  <text x="40" y="40" font-size="15" font-weight="bold">SandClock wiring</text>
+  <text x="40" y="62" font-size="12" fill="#444">The adapter feeds the matrix and the D1 mini directly.</text>
+  <text x="40" y="80" font-size="12" fill="#444">Data must come from RX (GPIO3): the firmware's</text>
+  <text x="40" y="98" font-size="12" fill="#444">DMA LED driver can only use that pin.</text>
+  <text x="40" y="122" font-size="12" fill="#444">More light on the LDR gives a higher A0 reading.</text>
+  <text x="40" y="146" font-size="12" fill="#444">TBD = not confirmed for this build yet.</text>
+</svg>
