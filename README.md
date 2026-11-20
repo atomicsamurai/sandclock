@@ -9,7 +9,7 @@ Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED m
 
 - Time from NTP with POSIX timezone and DST rules, shown until synced as `--:--`
 - Outdoor temperature from a Home Assistant sensor, with a cycle (time 5 s, temperature 2 s) or combined display
-- The date (`THU 19`) for 3 seconds once a minute, at half past the minute, in the message color (can be turned off)
+- The date (`THU 19`) in the message color: off, for 3 seconds once a minute at half past the minute, or for 2 seconds as a step in the cycle (time, temperature, date)
 - Scrolling messages from the web UI, the HTTP API or Home Assistant, queued so back-to-back messages each get shown, with a live preview of how the text will scroll, how long it takes and which characters the clock can't draw
 - Hourly and half-hourly chime, optionally muted when the light sensor says it is dark
 - Automatic brightness from an LDR on `A0`
@@ -153,7 +153,7 @@ Use `curl -u admin:PASSWORD` when a password is set. POST bodies are form-encode
 | POST | `/config/brightness` | `brightness` 0-255 |
 | POST | `/config/autobrightness` | `autoBrightness` `true`/`false` |
 | POST | `/config/hourformat` | `hourFormat` 12 or 24 |
-| POST | `/config/displaystyle` | `displayStyle` 1 (cycle) or 2 (combined), and/or `dateEnabled` `true`/`false` |
+| POST | `/config/displaystyle` | `displayStyle` 1 (cycle) or 2 (combined), and/or `dateMode` 0 (off), 1 (3 s once a minute) or 2 (2 s in the cycle; with the combined style, combined 5 s then date 2 s). The older `dateEnabled` `true`/`false` still works and means 1 or 0 |
 | POST | `/config/chime` | any of `chimeEnabled`, `chimeMuteDark` (`true`/`false`), `chimeDarkThreshold` (0-1023) |
 | POST | `/config/timezones` | `tzName`, `tzValue` (POSIX TZ string, for example `MDT6`) |
 | POST | `/config/hassConfig` | `hassBaseUrl`, `hassEntityId`, `hassAT` |
@@ -279,7 +279,7 @@ The entity IDs are examples; use your own. The clock beeps before and after each
 
 ## Tests and CI
 
-`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI previews draw the same frames as `tools/render.py` (which mirrors `src/display.h`, and the message scroll and date screen in `src/scroll.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, the safe mode decision logic (`src/safe_mode_logic.h`), the light-sensor gesture (`src/light_gesture_logic.h`), the date screen layout (`src/date_screen_logic.h`), and which settings files an import accepts (`src/config_import.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
+`tests/run.sh` runs the host-side checks: JavaScript and shell syntax, `fonts.js` matches `digits.h`, the web UI previews draw the same frames as `tools/render.py` (which mirrors `src/display.h`, and the message scroll and date screen in `src/scroll.h`), the Home Assistant reply parser (`src/ha_parse.h`) handles odd replies, the safe mode decision logic (`src/safe_mode_logic.h`), the light-sensor gesture (`src/light_gesture_logic.h`), the date screen layout (`src/date_screen_logic.h`), the order and timing of the time, temperature and date screens (`src/screen_cycle_logic.h`), and which settings files an import accepts (`src/config_import.h`). Run `pio run` once first so ArduinoJson is available. GitHub Actions (`.github/workflows/ci.yml`) builds both images and runs these checks on every push.
 
 When you change a layout in `src/display.h`, update `tools/render.py` and `data/js/preview.js` too; the preview test fails if they drift.
 

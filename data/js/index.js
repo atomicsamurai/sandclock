@@ -158,7 +158,8 @@ function getServerValues() {
     rangeB.value = data.brightness;
     $('#hourFormat').val("" + data.hourFormat);
     $('#displayStyle').val("" + data.displayStyle);
-    $('#dateEnabled').prop("checked", data.dateEnabled !== false);
+    // firmware before 2.17 sends only dateEnabled
+    $('#dateMode').val("" + (data.dateMode !== undefined ? data.dateMode : (data.dateEnabled === false ? 0 : 1)));
     $('#chimeEnabled').prop("checked", data.chimeEnabled);
     $('#chimeMuteDark').prop("checked", data.chimeMuteDark);
     $('#chimeDarkThreshold').val(data.chimeDarkThreshold);
@@ -319,7 +320,7 @@ function updateChime() {
 function updateDisplayStyle() {
   postSettings("/config/displaystyle", {
     displayStyle: $('#displayStyle').val(),
-    dateEnabled: $('#dateEnabled').prop("checked")
+    dateMode: $('#dateMode').val()
   });
 }
 

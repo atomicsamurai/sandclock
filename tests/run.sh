@@ -44,6 +44,11 @@ BIN5="$(mktemp -d)/date_screen_test"
 ${CXX:-c++} -std=c++17 tests/date_screen_test.cpp -o "$BIN5"
 "$BIN5"
 
+step "Screen cycle (src/screen_cycle_logic.h)"
+BIN7="$(mktemp -d)/screen_cycle_test"
+${CXX:-c++} -std=c++17 tests/screen_cycle_test.cpp -o "$BIN7"
+"$BIN7"
+
 step "Message queue (src/message_queue_logic.h)"
 BIN6="$(mktemp -d)/message_queue_test"
 ${CXX:-c++} -std=c++17 tests/message_queue_test.cpp -o "$BIN6"

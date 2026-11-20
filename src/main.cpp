@@ -404,24 +404,20 @@ void loop() {
           time_t nowSec = time(nullptr);
           if (!timeSynced()) {
             showNoTime();
-          } else if (config.dateEnabled && dateScreenDue(localtime(&nowSec)->tm_sec)) {
-            // once a minute, for a few seconds, in either style; the cycle
-            // below carries on underneath
-            showDate(localtime(&nowSec));
-          } else if (config.displayStyle == 2) {
-            // combined: time and temperature on one screen, no cycling
-            showCombined();
           } else {
-            // cycle: 5s time, 2s temperature
-            if (!showingTemp && currentMillis - screenStartMs >= TIME_SCREEN_MS) {
-              showingTemp = 1;
-              screenStartMs = currentMillis;
-            } else if (showingTemp && currentMillis - screenStartMs >= TEMP_SCREEN_MS) {
-              showingTemp = 0;
-              screenStartMs = currentMillis;
-            }
-            if (showingTemp) {
+            // time (or combined) 5 s, temperature 2 s in the cycle style,
+            // and the date 2 s when it is part of the cycle
+            uint8_t screen = screenCycle.step(currentMillis, config.displayStyle, config.dateMode);
+            if (config.dateMode == DATE_MODE_MINUTE && dateScreenDue(localtime(&nowSec)->tm_sec)) {
+              // once a minute, for a few seconds, in either style; the cycle
+              // carries on underneath
+              showDate(localtime(&nowSec));
+            } else if (screen == SCREEN_DATE) {
+              showDate(localtime(&nowSec));
+            } else if (screen == SCREEN_TEMP) {
               showTemperature();
+            } else if (config.displayStyle == 2) {
+              showCombined();
             } else {
               showTime();
             }

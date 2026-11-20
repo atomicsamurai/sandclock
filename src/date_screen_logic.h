@@ -1,8 +1,9 @@
 #pragma once
 
-// The date screen: "THU 19" in the 5x7 message font (scroll.h), centered,
-// shown for DATE_SCREEN_SECS seconds once a minute in place of whatever the
-// display style shows. Free of Arduino types so tests/ can compile it on a
+// The date screen: "THU 19" in the 5x7 message font (scroll.h), centered.
+// With dateMode once a minute it shows for DATE_SCREEN_SECS seconds in place
+// of whatever the display style shows; with dateMode in the cycle,
+// screen_cycle_logic.h decides when. Free of Arduino types so tests/ can compile it on a
 // host; scroll.h draws it, tools/render.py and data/js/preview.js mirror it.
 
 #include <stdio.h>

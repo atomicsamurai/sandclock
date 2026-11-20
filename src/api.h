@@ -176,7 +176,7 @@ void setHourFormat() {
 }
 
 void setDisplayStyle() {
-  if (!server.hasArg("displayStyle") && !server.hasArg("dateEnabled")) {
+  if (!server.hasArg("displayStyle") && !server.hasArg("dateMode") && !server.hasArg("dateEnabled")) {
     server.send(400, "text/plain", "400: Invalid Request");
     return;
   }
@@ -189,8 +189,15 @@ void setDisplayStyle() {
     config.displayStyle = s;
     Log.traceln("set display style: %d", s);
   }
-  if (server.hasArg("dateEnabled")) {
-    config.dateEnabled = server.arg("dateEnabled") == "true";
+  if (server.hasArg("dateMode")) {
+    String m = server.arg("dateMode");
+    if (m != "0" && m != "1" && m != "2") {
+      server.send(400, "text/plain", "400: dateMode must be 0 (off), 1 (once a minute) or 2 (in the cycle)");
+      return;
+    }
+    config.dateMode = m.toInt();
+  } else if (server.hasArg("dateEnabled")) {  // before 2.17
+    config.dateMode = server.arg("dateEnabled") == "true" ? DATE_MODE_MINUTE : DATE_MODE_OFF;
   }
   saveConfig();
   getConfig();

@@ -226,8 +226,15 @@
       });
     }
 
-    const withDate = $("#dateEnabled").prop("checked");
-    if (withDate) list.push({ label: "Date (3 s once a minute, message color)", frame: dateFrame(t.wday, t.mday, messageColor()) });
+    // src/screen_cycle_logic.h: 1 = once a minute, 2 = a 2 s step after
+    // the temperature (or after the combined screen)
+    const dateMode = parseInt($("#dateMode").val(), 10);
+    if (dateMode === 2) {
+      if (style === 2) list[0].label += " (5 s)";
+      list.push({ label: "Date (2 s, then the cycle starts again)", frame: dateFrame(t.wday, t.mday, messageColor()) });
+    } else if (dateMode === 1) {
+      list.push({ label: "Date (3 s once a minute, message color)", frame: dateFrame(t.wday, t.mday, messageColor()) });
+    }
 
     const shape = `${style}/${list.length}`;
     if (state.shown !== shape) {
@@ -335,7 +342,7 @@
       if (typeof i.temperature === "number") state.temp = i.temperature;
       update();
     });
-    $("#displayStyle, #hourFormat, #dateEnabled").on("change", update);
+    $("#displayStyle, #hourFormat, #dateMode").on("change", update);
     $("#messageText, #scrollDelay, #repeatCount").on("input", restartMessage);
     restartMessage();
     setInterval(() => { state.dots = !state.dots; update(); }, 1000);

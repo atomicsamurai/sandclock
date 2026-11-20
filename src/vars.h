@@ -8,13 +8,14 @@
 #include "date_screen_logic.h"
 #include "light_gesture_logic.h"
 #include "message_queue_logic.h"
+#include "screen_cycle_logic.h"
 
 /*
  * Firmware version. Bump on every behavior-changing release; the UI shows it
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.16.0"
+#define FW_VERSION "2.17.0"
 
 // Set at build time by tools/git_rev.py (git describe), so /info shows exactly
 // which commit is running.
@@ -39,7 +40,7 @@ struct ConfigObject {
   byte hourFormat;
   byte displayStyle;  // 1 = cycle time/temp (5s/2s), 2 = combined on one screen
   bool chimeEnabled;         // hourly/half-hourly chime
-  bool dateEnabled;          // "THU 19" for 3 s once a minute (date_screen_logic.h)
+  uint8_t dateMode;          // DATE_MODE_OFF / _MINUTE (3 s at :30) / _CYCLE (screen_cycle_logic.h)
   bool chimeMuteDark;        // silence automatic beeps (chime, message start/end) when dark
   uint16_t chimeDarkThreshold;  // smoothed light reading (0-1023) below which it is "dark"
   char hassBaseUrl[100];
@@ -60,15 +61,12 @@ struct ConfigObject {
 ConfigObject config;
 
 // ---- Display state --------------------------------------------------------
-int showingTemp = 0;                 // 0 = time screen, 1 = temperature
 bool dotsOn = true;                  // colon blink phase
 long currentTemp = -1000;            // -1000 sentinel = no HA reading
 RgbColor color_black = RgbColor(0, 0, 0);
 
-// Alt-screen cycle: 5s time, 2s temperature
-const unsigned long TIME_SCREEN_MS = 5000;
-const unsigned long TEMP_SCREEN_MS = 2000;
-unsigned long screenStartMs = 0;
+// Which screen shows now: time/combined, temperature, date (screen_cycle_logic.h)
+ScreenCycle screenCycle;
 
 // ---- Scroll message state (queued by /showmessage, driven by scroll.h) ----
 MessageQueue messageQueue;           // waiting messages; loop() starts the next when idle

@@ -13,7 +13,7 @@ void initDefaultConfig() {
   config.other_color = RgbColor(255, 0, 0);
   config.hourFormat = 12;
   config.displayStyle = 1;  // default: 5s/2s cycle
-  config.dateEnabled = true;
+  config.dateMode = DATE_MODE_MINUTE;
   config.chimeEnabled = true;
   config.chimeMuteDark = false;
   config.chimeDarkThreshold = 40;
@@ -89,7 +89,8 @@ void applyConfigDoc(JsonDocument &doc) {
 
   config.hourFormat = (doc["hourFormat"] | 12) == 24 ? 24 : 12;
   config.displayStyle = (doc["displayStyle"] | 1) == 2 ? 2 : 1;
-  config.dateEnabled = doc["dateEnabled"] | config.dateEnabled;
+  config.dateMode = dateModeFrom(doc["dateMode"].is<long>(), doc["dateMode"] | 1L,
+                                 doc["dateEnabled"].is<bool>(), doc["dateEnabled"] | true);
   config.chimeEnabled = doc["chimeEnabled"] | config.chimeEnabled;
   config.chimeMuteDark = doc["chimeMuteDark"] | config.chimeMuteDark;
   config.chimeDarkThreshold = constrain(doc["chimeDarkThreshold"] | (int)config.chimeDarkThreshold, 0, 1023);
@@ -149,7 +150,10 @@ DynamicJsonDocument getConfigDoc(bool redact = false) {
 
   doc["hourFormat"] = config.hourFormat;
   doc["displayStyle"] = config.displayStyle;
-  doc["dateEnabled"] = config.dateEnabled;
+  doc["dateMode"] = config.dateMode;
+  // Firmware before 2.17 only knows dateEnabled; keep it so a settings file
+  // from this one still restores there.
+  doc["dateEnabled"] = config.dateMode != DATE_MODE_OFF;
   doc["chimeEnabled"] = config.chimeEnabled;
   doc["chimeMuteDark"] = config.chimeMuteDark;
   doc["chimeDarkThreshold"] = config.chimeDarkThreshold;
