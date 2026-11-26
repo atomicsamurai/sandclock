@@ -15,7 +15,7 @@
  * (footer + OTA page) and /config reports it, so a flash can be verified
  * from the browser or with `curl http://sandclock.local/config`.
  */
-#define FW_VERSION "2.17.0"
+#define FW_VERSION "2.18.0"
 
 // Set at build time by tools/git_rev.py (git describe), so /info shows exactly
 // which commit is running.
@@ -55,6 +55,7 @@ struct ConfigObject {
   RgbColor clock_color;
   RgbColor temp_color;
   RgbColor other_color;
+  RgbColor date_color;   // the date screen (defaults to other_color for older settings)
   String wifiMacString;
 };
 

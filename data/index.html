@@ -38,6 +38,8 @@
   <div class="row" style="margin: 10px 10px;">
     <div class="col-12">
 
+      <div id="tempWarning" class="alert alert-warning d-none" role="alert"></div>
+
       <div class="card">
         <div class="card-body">
           <div class="form-group">
@@ -87,6 +89,16 @@
             <button type="button" class="btn btn-primary" onclick="setOtherColor()">Set message color</button>
           </div>
         </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="form-group">
+              <label class="d-block" for="date_color">Date color</label>
+              <input type="text" id="date_color" class="form-control demo" data-inline="true" value="#ff0000">
+              <div class="small text-monospace text-muted mt-2" id="date_color_val"></div>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="setDateColor()">Set date color</button>
+          </div>
+        </div>
       </div>
       <br />
       <div class="card">
@@ -125,7 +137,7 @@
                 <option value="1">Cycle: time 5s / temp 2s</option>
                 <option value="2">Combined: time and temp</option>
               </select>
-              <label for="dateMode" class="mt-2">Date <small class="text-muted">(like <code>THU 19</code>, in the message color)</small></label>
+              <label for="dateMode" class="mt-2">Date <small class="text-muted">(like <code>THU 19</code>, in the date color)</small></label>
               <select class="form-control" id="dateMode">
                 <option value="0">Off</option>
                 <option value="1">Once a minute: 3 s at :30</option>

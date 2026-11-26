@@ -14,19 +14,19 @@ static void expect(const char *name, bool pass) {
 
 // Steps once a second, as loop() does, from t=1000 ms for `secs` seconds and
 // writes one letter per second: T(ime/combined), t(emp), D(ate).
-static void run(uint8_t style, uint8_t mode, int secs, char *out) {
+static void run(uint8_t style, uint8_t mode, bool hasTemp, int secs, char *out) {
   ScreenCycle c;
   c.startMs = 1000;
   for (int i = 0; i < secs; i++) {
-    uint8_t s = c.step(1000 + i * 1000UL, style, mode);
+    uint8_t s = c.step(1000 + i * 1000UL, style, mode, hasTemp);
     out[i] = s == SCREEN_MAIN ? 'T' : s == SCREEN_TEMP ? 't' : 'D';
   }
   out[secs] = 0;
 }
 
-static bool seq(uint8_t style, uint8_t mode, const char *want) {
+static bool seq(uint8_t style, uint8_t mode, const char *want, bool hasTemp = true) {
   char got[64];
-  run(style, mode, (int)strlen(want), got);
+  run(style, mode, hasTemp, (int)strlen(want), got);
   bool ok = strcmp(got, want) == 0;
   if (!ok) printf("    got  %s\n    want %s\n", got, want);
   return ok;
@@ -38,28 +38,37 @@ int main() {
   expect("cycle, date in cycle: time, temp, date", seq(1, DATE_MODE_CYCLE, "TTTTTttDDTTTTTttDD"));
   expect("combined, date off: never changes", seq(2, DATE_MODE_OFF, "TTTTTTTTTTTT"));
   expect("combined, date in cycle: combined 5 s, date 2 s", seq(2, DATE_MODE_CYCLE, "TTTTTDDTTTTTDD"));
+  expect("cycle, no temperature: time only", seq(1, DATE_MODE_OFF, "TTTTTTTTTTTTTT", false));
+  expect("cycle, no temperature, date in cycle: time, date", seq(1, DATE_MODE_CYCLE, "TTTTTDDTTTTTDD", false));
+  expect("combined, no temperature, date in cycle", seq(2, DATE_MODE_CYCLE, "TTTTTDDTTTTTDD", false));
 
-  expect("next after temp, date off, wraps to main", nextScreen(SCREEN_TEMP, 1, DATE_MODE_OFF) == SCREEN_MAIN);
-  expect("next after main, combined + cycle, is date", nextScreen(SCREEN_MAIN, 2, DATE_MODE_CYCLE) == SCREEN_DATE);
-  expect("next after date wraps to main", nextScreen(SCREEN_DATE, 1, DATE_MODE_CYCLE) == SCREEN_MAIN);
+  expect("next after temp, date off, wraps to main", nextScreen(SCREEN_TEMP, 1, DATE_MODE_OFF, true) == SCREEN_MAIN);
+  expect("next after main, combined + cycle, is date", nextScreen(SCREEN_MAIN, 2, DATE_MODE_CYCLE, true) == SCREEN_DATE);
+  expect("next after date wraps to main", nextScreen(SCREEN_DATE, 1, DATE_MODE_CYCLE, true) == SCREEN_MAIN);
 
   {
     ScreenCycle c;
     c.screen = SCREEN_TEMP;
     c.startMs = 0;
-    expect("temp screen ends at once on switch to combined", c.step(500, 2, DATE_MODE_OFF) == SCREEN_MAIN && c.startMs == 500);
+    expect("temp screen ends at once on switch to combined", c.step(500, 2, DATE_MODE_OFF, true) == SCREEN_MAIN && c.startMs == 500);
   }
   {
     ScreenCycle c;
     c.screen = SCREEN_DATE;
     c.startMs = 0;
-    expect("date screen ends at once when date mode leaves cycle", c.step(500, 1, DATE_MODE_MINUTE) == SCREEN_MAIN);
+    expect("date screen ends at once when date mode leaves cycle", c.step(500, 1, DATE_MODE_MINUTE, true) == SCREEN_MAIN);
+  }
+  {
+    ScreenCycle c;
+    c.screen = SCREEN_TEMP;
+    c.startMs = 0;
+    expect("temp screen ends at once when the reading is lost", c.step(500, 1, DATE_MODE_OFF, false) == SCREEN_MAIN);
   }
   {
     ScreenCycle c;
     c.startMs = 0xFFFFF000UL;  // millis() wraps after ~49 days
-    expect("millis() wrap keeps timing", c.step(0xFFFFF000UL + 4000, 1, DATE_MODE_OFF) == SCREEN_MAIN &&
-                                             c.step(0x00000388UL, 1, DATE_MODE_OFF) == SCREEN_TEMP);
+    expect("millis() wrap keeps timing", c.step(0xFFFFF000UL + 4000, 1, DATE_MODE_OFF, true) == SCREEN_MAIN &&
+                                             c.step(0x00000388UL, 1, DATE_MODE_OFF, true) == SCREEN_TEMP);
   }
 
   expect("dateMode wins over dateEnabled", dateModeFrom(true, 2, true, false) == DATE_MODE_CYCLE);

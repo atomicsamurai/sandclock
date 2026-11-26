@@ -5,6 +5,8 @@
 // whatever else is showing), or a step in the cycle:
 //   cycle style:    time 5 s -> temperature 2 s [-> date 2 s] -> time ...
 //   combined style: combined 5 s [-> date 2 s] -> combined ...
+// Without a temperature reading the temperature screen is left out (the
+// combined style then shows the time screen as its main screen; see loop()).
 // Free of Arduino types so tests/ can compile it on a host; data/js/preview.js
 // mirrors the order for the web UI preview.
 
@@ -41,18 +43,18 @@ inline unsigned long screenDurationMs(uint8_t screen) {
 }
 
 // Whether screen is part of the cycle for this style (1 = cycle,
-// 2 = combined) and date mode.
-inline bool screenInCycle(uint8_t screen, uint8_t style, uint8_t dateMode) {
+// 2 = combined), date mode and whether there is a temperature reading.
+inline bool screenInCycle(uint8_t screen, uint8_t style, uint8_t dateMode, bool hasTemp) {
   if (screen == SCREEN_MAIN) return true;
-  if (screen == SCREEN_TEMP) return style != 2;
+  if (screen == SCREEN_TEMP) return style != 2 && hasTemp;
   if (screen == SCREEN_DATE) return dateMode == DATE_MODE_CYCLE;
   return false;
 }
 
 // The screen after this one.
-inline uint8_t nextScreen(uint8_t screen, uint8_t style, uint8_t dateMode) {
+inline uint8_t nextScreen(uint8_t screen, uint8_t style, uint8_t dateMode, bool hasTemp) {
   for (uint8_t s = screen + 1; s <= SCREEN_DATE; s++) {
-    if (screenInCycle(s, style, dateMode)) return s;
+    if (screenInCycle(s, style, dateMode, hasTemp)) return s;
   }
   return SCREEN_MAIN;
 }
@@ -62,14 +64,15 @@ struct ScreenCycle {
   unsigned long startMs = 0;
 
   // Called once a second; moves on when the current screen's time is up.
-  // A screen the settings no longer include (style or date mode changed
-  // while it showed) gives way to the main screen at once.
-  uint8_t step(unsigned long nowMs, uint8_t style, uint8_t dateMode) {
-    if (!screenInCycle(screen, style, dateMode)) {
+  // A screen the cycle no longer includes (style or date mode changed, or
+  // the temperature reading was lost, while it showed) gives way to the
+  // main screen at once.
+  uint8_t step(unsigned long nowMs, uint8_t style, uint8_t dateMode, bool hasTemp) {
+    if (!screenInCycle(screen, style, dateMode, hasTemp)) {
       screen = SCREEN_MAIN;
       startMs = nowMs;
     } else if (nowMs - startMs >= screenDurationMs(screen)) {
-      screen = nextScreen(screen, style, dateMode);
+      screen = nextScreen(screen, style, dateMode, hasTemp);
       startMs = nowMs;
     }
     return screen;

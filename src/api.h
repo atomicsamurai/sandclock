@@ -113,6 +113,13 @@ void setOtherColor() {
   getConfig();
 }
 
+void setDateColor() {
+  config.date_color = argColor();
+  Log.traceln("set date color");
+  saveConfig();
+  getConfig();
+}
+
 void playSound() {
   if(!server.hasArg("type")) {
     server.send(400, "text/plain", "400: Invalid Request");
@@ -473,6 +480,7 @@ void setupHandlers() {
   server.on("/config/clockcolor", HTTP_POST, secured(setClockColor));
   server.on("/config/tempcolor", HTTP_POST, secured(setTempColor));
   server.on("/config/othercolor", HTTP_POST, secured(setOtherColor));
+  server.on("/config/datecolor", HTTP_POST, secured(setDateColor));
   server.on("/config/brightness", HTTP_POST, secured(setBrightness));
   server.on("/config/autobrightness", HTTP_POST, secured(toggleAutoBrightness));
   server.on("/config/hourformat", HTTP_POST, secured(setHourFormat));

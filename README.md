@@ -8,8 +8,8 @@ Firmware and web UI for an ESP8266 (WeMos D1 mini) clock on a 32x8 WS2812B LED m
 </p>
 
 - Time from NTP with POSIX timezone and DST rules, shown until synced as `--:--`
-- Outdoor temperature from a Home Assistant sensor, with a cycle (time 5 s, temperature 2 s) or combined display
-- The date (`THU 19`) in the message color: off, for 3 seconds once a minute at half past the minute, or for 2 seconds as a step in the cycle (time, temperature, date)
+- Outdoor temperature from a Home Assistant sensor, with a cycle (time 5 s, temperature 2 s) or combined display. Without a reading (Home Assistant not set up, unreachable, or no good reading for 15 minutes) the clock leaves the temperature out and shows the time; the web UI says what is wrong
+- The date (`THU 19`) in its own color: off, for 3 seconds once a minute at half past the minute, or for 2 seconds as a step in the cycle (time, temperature, date)
 - Scrolling messages from the web UI, the HTTP API or Home Assistant, queued so back-to-back messages each get shown, with a live preview of how the text will scroll, how long it takes and which characters the clock can't draw
 - Hourly and half-hourly chime, optionally muted when the light sensor says it is dark
 - Automatic brightness from an LDR on `A0`
@@ -149,7 +149,7 @@ Use `curl -u admin:PASSWORD` when a password is set. POST bodies are form-encode
 | --- | --- | --- |
 | GET | `/info` | Runtime status: network, time, NTP, Home Assistant, light, messages (`messageScrolling`, `messagesQueued`), memory, flash |
 | GET | `/config` | Settings (the WiFi password and HA token are masked) |
-| POST | `/config/clockcolor`, `/config/tempcolor`, `/config/othercolor` | `r`, `g`, `b` (0-255). `othercolor` is the scrolling message color |
+| POST | `/config/clockcolor`, `/config/tempcolor`, `/config/othercolor`, `/config/datecolor` | `r`, `g`, `b` (0-255). `othercolor` is the scrolling message color, `datecolor` the date's (settings from before 2.18 start it at the message color) |
 | POST | `/config/brightness` | `brightness` 0-255 |
 | POST | `/config/autobrightness` | `autoBrightness` `true`/`false` |
 | POST | `/config/hourformat` | `hourFormat` 12 or 24 |

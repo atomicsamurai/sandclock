@@ -1,6 +1,6 @@
 $(document).ready(function () {
 
-  ['clock_color', 'temp_color', 'other_color'].forEach(id => {
+  ['clock_color', 'temp_color', 'other_color', 'date_color'].forEach(id => {
     const $el = $('#' + id);
     if ($el.length) {
       $el.minicolors({
@@ -37,7 +37,7 @@ function rgbToHex(c) {
 // Show a picker's value as text ("#rrggbb  rgb(r, g, b)") and redraw the
 // Display Style preview, which uses the picker colors.
 function refreshColorViews(id) {
-  const ids = id ? [id] : ['clock_color', 'temp_color', 'other_color'];
+  const ids = id ? [id] : ['clock_color', 'temp_color', 'other_color', 'date_color'];
   ids.forEach(cid => {
     const c = $('#' + cid).minicolors('rgbObject');
     $('#' + cid + '_val').text(`${rgbToHex(c)}  rgb(${c.r}, ${c.g}, ${c.b})`);
@@ -153,6 +153,8 @@ function getServerValues() {
     $('#clock_color').minicolors('value', rgbToHex(data.clock_color));
     $('#temp_color').minicolors('value', rgbToHex(data.temp_color));
     $('#other_color').minicolors('value', rgbToHex(data.other_color));
+    // firmware before 2.18 has no date color: the date used the message color
+    $('#date_color').minicolors('value', rgbToHex(data.date_color || data.other_color));
     refreshColorViews();
     let rangeB = document.getElementById("rangeBrightness");
     rangeB.value = data.brightness;
@@ -249,6 +251,10 @@ function setOtherColor() {
   postSettings("/config/othercolor", $('#other_color').minicolors('rgbObject'));
 }
 
+function setDateColor() {
+  postSettings("/config/datecolor", $('#date_color').minicolors('rgbObject'));
+}
+
 function toggleAutoBrightness() {
   let abcb = document.querySelector('#autoBrightness');
   if (abcb.checked) {
@@ -279,10 +285,25 @@ function updateHourFormat() {
 // tuned against what the sensor actually reads in the dark and in daylight.
 let lastLight = null;
 
+// Without a temperature reading the clock leaves the temperature out
+// (no "---" on the matrix), so say here what is wrong.
+function showTempWarning(i) {
+  const $w = $('#tempWarning');
+  if (i.temperature !== -1000) {
+    $w.addClass('d-none');
+    return;
+  }
+  const why = !i.haConfigured
+    ? "Home Assistant is not set up (base URL, entity ID and token, below)."
+    : `Home Assistant: ${fmtHa(i)}.`;
+  $w.text(`No outdoor temperature: the clock is showing the time without it. ${why}`).removeClass('d-none');
+}
+
 function refreshLight() {
   $.get("/info", i => {
     lastLight = i.lightLevel;
     showLight();
+    showTempWarning(i);
     $('#apPassword').text(i.apPassword || "(created the first time the access point starts)");
   });
 }

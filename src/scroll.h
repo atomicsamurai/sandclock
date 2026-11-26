@@ -101,12 +101,13 @@ void drawText5x7(int x, const char *s, RgbColor color) {
   }
 }
 
-// The date screen, "THU 19" centered in the message color (see
-// date_screen_logic.h for when it shows).
+// The date screen, "THU 19" centered in the date color (see
+// date_screen_logic.h and screen_cycle_logic.h for when it shows). Like
+// every screen it goes through strip.SetBrightness (sensor.h).
 void showDate(const struct tm *tm) {
   char text[8];
   int x = dateLayout(tm->tm_wday, tm->tm_mday, text);
-  drawText5x7(x, text, config.other_color);
+  drawText5x7(x, text, config.date_color);
 }
 
 bool scrollActive = false;

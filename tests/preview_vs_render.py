@@ -32,7 +32,9 @@ def main():
              str(style), str(fmt), str(h), str(m), str(t)]).decode()
         js_frames = [normalize(b) for b in js.split("--\n") if b.strip()]
         py_frames = []
-        for view in (["time", "temp"] if style == 1 else ["combined"]):
+        # without a reading (-1000) both styles show only the time screen
+        views = ["time"] if t == -1000 else ["time", "temp"] if style == 1 else ["combined"]
+        for view in views:
             out = subprocess.check_output(
                 ["python3", os.path.join(ROOT, "tools", "render.py"), view,
                  "--time", f"{h:02d}:{m:02d}", "--temp", "none" if t == -1000 else str(t),

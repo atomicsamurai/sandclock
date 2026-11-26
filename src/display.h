@@ -90,42 +90,35 @@ void showTemperature() {
   // Exact same UserBold glyphs at scale 1 as the clock (6-wide boxes, 1-col
   // gaps), right-justified to the clock's right margin (last ink column 30).
   // The degree dot sits in cols 3-4 of its box, so with the box at x=26 the
-  // last digit box ends at 27. "---" on HA failure has no degree: the last
-  // minus box is at 26 so its ink also ends at 30.
+  // last digit box ends at 27. Without a reading nothing is drawn (loop()
+  // skips this screen then).
+  if (currentTemp == -1000) {
+    return;
+  }
   const auto &font = clock_font ("UserBold");
   const int dMinus = 11; // MINUS glyph index in the UserBold font
   const int y_start = 0;
 
   byte glyphs[3];  // up to sign + 2 digits
   int n = 0;
-  bool withDegree = false;
-  if (currentTemp == -1000) {
-    for (int i = 0; i < 3; ++i) {
-      glyphs[n++] = dMinus;
-    }
-  } else {
-    int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
-    if (positiveTemp > 99)
-      positiveTemp = 99;
-    byte t1 = positiveTemp / 10;
-    byte t2 = positiveTemp % 10;
-    if (currentTemp < 0) {
-      glyphs[n++] = dMinus;
-    }
-    if (t1 > 0) {
-      glyphs[n++] = t1;
-    }
-    glyphs[n++] = t2;
-    withDegree = true;
+  int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
+  if (positiveTemp > 99)
+    positiveTemp = 99;
+  byte t1 = positiveTemp / 10;
+  byte t2 = positiveTemp % 10;
+  if (currentTemp < 0) {
+    glyphs[n++] = dMinus;
   }
+  if (t1 > 0) {
+    glyphs[n++] = t1;
+  }
+  glyphs[n++] = t2;
 
-  const int lastX = withDegree ? 22 : 26;
+  const int lastX = 22;
   for (int i = 0; i < n; ++i) {
     printAt (lastX - 7 * (n - 1 - i), y_start, glyphs[i], font, config.temp_color);
   }
-  if (withDegree) {
-    printAt (26, y_start, DEGREES, font, config.temp_color);
-  }
+  printAt (26, y_start, DEGREES, font, config.temp_color);
 }
 
 
@@ -136,26 +129,23 @@ void showTemperatureSmall() {
   const auto &font = clock_font ("Temp");
   const int y_start = 1;
 
-  byte glyphs[4];  // up to sign + 2 digits, or "---"
-  int n = 0;
-  if (currentTemp != -1000) {
-    int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
-    if (positiveTemp > 99)
-      positiveTemp = 99;
-    byte t1 = positiveTemp / 10;
-    byte t2 = positiveTemp % 10;
-    if (currentTemp < 0) {
-      glyphs[n++] = MINUS;
-    }
-    if (t1 > 0) {
-      glyphs[n++] = t1;
-    }
-    glyphs[n++] = t2;
-  } else {
-    for (int i = 0; i < 3; ++i) {
-      glyphs[n++] = MINUS;
-    }
+  if (currentTemp == -1000) {
+    return;  // no reading: draw nothing (loop() shows the time screen then)
   }
+  byte glyphs[4];  // up to sign + 2 digits
+  int n = 0;
+  int positiveTemp = currentTemp < 0 ? -currentTemp : currentTemp;
+  if (positiveTemp > 99)
+    positiveTemp = 99;
+  byte t1 = positiveTemp / 10;
+  byte t2 = positiveTemp % 10;
+  if (currentTemp < 0) {
+    glyphs[n++] = MINUS;
+  }
+  if (t1 > 0) {
+    glyphs[n++] = t1;
+  }
+  glyphs[n++] = t2;
 
   int total = n - 1;  // gaps
   for (int i = 0; i < n; ++i) {

@@ -407,7 +407,10 @@ void loop() {
           } else {
             // time (or combined) 5 s, temperature 2 s in the cycle style,
             // and the date 2 s when it is part of the cycle
-            uint8_t screen = screenCycle.step(currentMillis, config.displayStyle, config.dateMode);
+            // without a temperature reading there is no temperature screen,
+            // and the combined style falls back to the time screen
+            bool hasTemp = currentTemp != -1000;
+            uint8_t screen = screenCycle.step(currentMillis, config.displayStyle, config.dateMode, hasTemp);
             if (config.dateMode == DATE_MODE_MINUTE && dateScreenDue(localtime(&nowSec)->tm_sec)) {
               // once a minute, for a few seconds, in either style; the cycle
               // carries on underneath
@@ -416,7 +419,7 @@ void loop() {
               showDate(localtime(&nowSec));
             } else if (screen == SCREEN_TEMP) {
               showTemperature();
-            } else if (config.displayStyle == 2) {
+            } else if (config.displayStyle == 2 && hasTemp) {
               showCombined();
             } else {
               showTime();

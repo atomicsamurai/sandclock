@@ -53,8 +53,9 @@
     return f;
   }
 
+  // Without a reading the clock draws no temperature at all (src/display.h).
   function tempGlyphs(t, minus) {
-    if (t === NO_TEMP) return [minus, minus, minus];
+    if (t === NO_TEMP) return [];
     const p = Math.min(Math.abs(t), 99);
     const t1 = Math.floor(p / 10), t2 = p % 10;
     return [...(t < 0 ? [minus] : []), ...(t1 > 0 ? [t1] : []), t2];
@@ -62,11 +63,10 @@
 
   function temperatureFrame(t, color) {
     const f = newFrame(), font = CLOCK_FONTS.UserBold;
+    if (t === NO_TEMP) return f;
     const glyphs = tempGlyphs(t, UB_MINUS);
-    const withDegree = t !== NO_TEMP;
-    const lastX = withDegree ? 22 : 26;
-    glyphs.forEach((g, i) => printAt(f, lastX - 7 * (glyphs.length - 1 - i), 0, g, font, color));
-    if (withDegree) printAt(f, 26, 0, DEGREES, font, color);
+    glyphs.forEach((g, i) => printAt(f, 22 - 7 * (glyphs.length - 1 - i), 0, g, font, color));
+    printAt(f, 26, 0, DEGREES, font, color);
     return f;
   }
 
@@ -92,9 +92,11 @@
     return f;
   }
 
-  // style 1 = cycle (time screen, then temperature screen), 2 = combined
+  // style 1 = cycle (time screen, then temperature screen), 2 = combined.
+  // Without a reading (t = NO_TEMP) both show only the time screen.
   function frames(style, fmt, h, m, t, dots, clock, tempColor) {
     const hh = to12(h, fmt);
+    if (t === NO_TEMP) return [{ label: "Time screen (no temperature reading)", frame: timeFrame(hh, m, dots, clock) }];
     return style === 2
       ? [{ label: "Time and temperature together", frame: combinedFrame(hh, m, t, dots, clock, tempColor) }]
       : [{ label: "Time screen (5 s)", frame: timeFrame(hh, m, dots, clock) },
@@ -222,7 +224,7 @@
     const list = frames(style, fmt, t.h, t.m, hasTemp ? state.temp : SAMPLE_TEMP, state.dots, clock, tempColor);
     if (!hasTemp) {
       list.forEach(item => {
-        if (/emperature/.test(item.label)) item.label += " - sample value, clock has no reading yet";
+        if (/emperature/.test(item.label)) item.label += " - sample value: without a reading the clock leaves the temperature out";
       });
     }
 
@@ -231,9 +233,9 @@
     const dateMode = parseInt($("#dateMode").val(), 10);
     if (dateMode === 2) {
       if (style === 2) list[0].label += " (5 s)";
-      list.push({ label: "Date (2 s, then the cycle starts again)", frame: dateFrame(t.wday, t.mday, messageColor()) });
+      list.push({ label: "Date (2 s, then the cycle starts again)", frame: dateFrame(t.wday, t.mday, dateColor()) });
     } else if (dateMode === 1) {
-      list.push({ label: "Date (3 s once a minute, message color)", frame: dateFrame(t.wday, t.mday, messageColor()) });
+      list.push({ label: "Date (3 s once a minute)", frame: dateFrame(t.wday, t.mday, dateColor()) });
     }
 
     const shape = `${style}/${list.length}`;
@@ -255,6 +257,11 @@
   // The message card's preview: runs the text across the panel at the chosen
   // scroll delay, the chosen number of passes (up to 3), then a short pause.
   const msg = { timer: null, pos: W, pass: 0 };
+
+  function dateColor() {
+    const $c = $("#date_color");
+    return css($c.data("minicolors-initialized") ? $c.minicolors("rgbObject") : { r: 255, g: 0, b: 0 });
+  }
 
   function messageColor() {
     const $c = $("#other_color");

@@ -11,6 +11,7 @@ void initDefaultConfig() {
   config.clock_color = RgbColor(0, 0, 255);
   config.temp_color = RgbColor(255, 0, 0);
   config.other_color = RgbColor(255, 0, 0);
+  config.date_color = RgbColor(255, 0, 0);
   config.hourFormat = 12;
   config.displayStyle = 1;  // default: 5s/2s cycle
   config.dateMode = DATE_MODE_MINUTE;
@@ -86,6 +87,10 @@ void applyConfigDoc(JsonDocument &doc) {
   loadColor(config.clock_color, doc["clock_color"]);
   loadColor(config.temp_color, doc["temp_color"]);
   loadColor(config.other_color, doc["other_color"]);
+  // Before 2.18 the date used the message color: start from it so the date
+  // looks the same until a date color is chosen.
+  config.date_color = config.other_color;
+  loadColor(config.date_color, doc["date_color"]);
 
   config.hourFormat = (doc["hourFormat"] | 12) == 24 ? 24 : 12;
   config.displayStyle = (doc["displayStyle"] | 1) == 2 ? 2 : 1;
@@ -106,7 +111,7 @@ void applyConfigDoc(JsonDocument &doc) {
 }
 
 bool applyConfigJson(const char *json) {
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(3072);  // as importConfig: room for every string at its maximum
   auto error = deserializeJson(doc, json);
   if (error) {
     Log.errorln("Failed to parse config");
@@ -134,7 +139,7 @@ const char *const SECRET_MASK = "******";
 
 // redact=true is for the HTTP API; saveConfig() needs the real values.
 DynamicJsonDocument getConfigDoc(bool redact = false) {
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(3072);
   doc["brightness"] = config.brightness;
   doc["autoBrightness"] = config.autoBrightness;
 
@@ -147,6 +152,9 @@ DynamicJsonDocument getConfigDoc(bool redact = false) {
   doc["other_color"]["r"] = config.other_color.R;
   doc["other_color"]["g"] = config.other_color.G;
   doc["other_color"]["b"] = config.other_color.B;
+  doc["date_color"]["r"] = config.date_color.R;
+  doc["date_color"]["g"] = config.date_color.G;
+  doc["date_color"]["b"] = config.date_color.B;
 
   doc["hourFormat"] = config.hourFormat;
   doc["displayStyle"] = config.displayStyle;

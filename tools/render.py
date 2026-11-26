@@ -140,29 +140,24 @@ def show_time(c, fonts, h, m, dots, clock):
 
 
 def show_temperature(c, fonts, t, color):
-    font = fonts["UserBold"]
     if t == -1000:
-        glyphs, with_degree = [UB_MINUS] * 3, False
-    else:
-        p = min(abs(t), 99)
-        t1, t2 = p // 10, p % 10
-        glyphs = ([UB_MINUS] if t < 0 else []) + ([t1] if t1 > 0 else []) + [t2]
-        with_degree = True
-    last_x = 22 if with_degree else 26
+        return  # no reading: nothing drawn (the clock skips this screen)
+    font = fonts["UserBold"]
+    p = min(abs(t), 99)
+    t1, t2 = p // 10, p % 10
+    glyphs = ([UB_MINUS] if t < 0 else []) + ([t1] if t1 > 0 else []) + [t2]
     for i, g in enumerate(glyphs):
-        c.print_at(last_x - 7 * (len(glyphs) - 1 - i), 0, g, font, color)
-    if with_degree:
-        c.print_at(26, 0, DEGREES, font, color)
+        c.print_at(22 - 7 * (len(glyphs) - 1 - i), 0, g, font, color)
+    c.print_at(26, 0, DEGREES, font, color)
 
 
 def show_small(c, fonts, t, color):
-    font = fonts["Temp"]
     if t == -1000:
-        glyphs = [MINUS] * 3
-    else:
-        p = min(abs(t), 99)
-        t1, t2 = p // 10, p % 10
-        glyphs = ([MINUS] if t < 0 else []) + ([t1] if t1 > 0 else []) + [t2]
+        return  # no reading: nothing drawn (the clock shows the time screen)
+    font = fonts["Temp"]
+    p = min(abs(t), 99)
+    t1, t2 = p // 10, p % 10
+    glyphs = ([MINUS] if t < 0 else []) + ([t1] if t1 > 0 else []) + [t2]
     widths = [font["glyphs"][g]["width"] for g in glyphs]
     x = W - (sum(widths) + len(glyphs) - 1)
     for g, w in zip(glyphs, widths):
@@ -219,7 +214,7 @@ def main():
                     choices=["time", "temp", "small", "combined", "message", "date", "all"])
     ap.add_argument("--time", help="HH:MM (default: now)")
     ap.add_argument("--temp", type=temp_arg, default=-15,
-                    help="integer degrees, or 'none' for the HA-failure dashes")
+                    help="integer degrees, or 'none' for no reading (nothing is drawn)")
     ap.add_argument("--dots", choices=["on", "off"], default="on", help="colon state")
     ap.add_argument("--hour-format", type=int, choices=[12, 24], default=24)
     ap.add_argument("--clock-color", type=rgb, default=(0, 0, 255),
@@ -232,6 +227,8 @@ def main():
                     help="message view: x of its first column (the clock starts at 32)")
     ap.add_argument("--other-color", type=rgb, default=(255, 0, 0),
                     help="r,g,b message color (firmware default 255,0,0)")
+    ap.add_argument("--date-color", type=rgb, default=(255, 0, 0),
+                    help="r,g,b date color (firmware default 255,0,0)")
     ap.add_argument("--plain", action="store_true", help="## and . instead of ANSI color")
     ap.add_argument("--ruler", action="store_true", help="print column numbers (x mod 10)")
     a = ap.parse_args()
@@ -257,7 +254,7 @@ def main():
             import datetime
             d = datetime.date.fromisoformat(a.date) if a.date else datetime.date.today()
             show_date(c, load_scroll_font(os.path.join(ROOT, "src", "scroll.h")),
-                      (d.weekday() + 1) % 7, d.day, a.other_color)
+                      (d.weekday() + 1) % 7, d.day, a.date_color)
         elif v == "message":
             show_message(c, load_scroll_font(os.path.join(ROOT, "src", "scroll.h")),
                          a.text, a.pos, a.other_color)
